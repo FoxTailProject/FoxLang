@@ -1,15 +1,24 @@
 #pragma once
 
 #include <optional>
+#include <string>
 
 namespace FoxLang {
-// enum TokenType;
-// class Token {
-//   template <typename T> using Option = std::optional<T>;
-//   Token(TokenType type, std::string lexeme, std::shared_ptr<void> literal)
-// };
+enum class TokenType;
 
-enum TokenType {
+class Token {
+public:
+  Token(TokenType type, std::string *lexeme, int line)
+      : type(type), lexeme(lexeme), line(line) {}
+
+private:
+  TokenType type;
+  std::string *lexeme;
+  int line;
+  template <typename T> using Option = std::optional<T>;
+};
+
+enum class TokenType {
   // Single-character tokens.
   LEFT_PAREN,
   RIGHT_PAREN,
@@ -60,6 +69,7 @@ enum TokenType {
   VAR,
   WHILE,
 
-  EOF
+  EOF_TOKEN
 };
+
 } // namespace FoxLang

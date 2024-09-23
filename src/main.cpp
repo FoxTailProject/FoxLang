@@ -4,6 +4,8 @@
 
 #include <argparse.hpp>
 
+#include "lexer/tokenizer.hpp"
+
 auto main(int argc, char *argv[]) -> int {
   argparse::ArgumentParser program("fox", "0.0.1 epsilon");
 
@@ -29,10 +31,15 @@ auto main(int argc, char *argv[]) -> int {
     std::exit(1);
   }
 
-  std::string line;
-  while (std::getline(file, line)) {
-    std::cout << line << std::endl;
-  }
+  std::string contents((std::istreambuf_iterator<char>(file)),
+                       (std::istreambuf_iterator<char>()));
+
+  // std::string line;
+  // while (std::getline(file, line)) {
+  //   std::cout << line << std::endl;
+  // }
+  FoxLang::Tokenizer tokenizer(&contents);
+  tokenizer.TokenizeInput();
 
   return 0;
 }
