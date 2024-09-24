@@ -1,5 +1,7 @@
 #pragma once
 
+#define PUSH_TOKEN(type) tokens.push_back(Token((type), start, line))
+
 #include <iostream>
 #include <vector>
 
@@ -15,7 +17,29 @@ public:
     std::cout << "Start: " << start << std::endl;
     std::cout << "Input: " << input << std::endl;
     std::cout << "Input[0]: " << (*input)[0] << std::endl;
+
+    std::vector<Token> tokens;
+
+    while (tokens.back().type != TokenType::EOF_TOKEN) {
+    }
     return {};
+  }
+
+private:
+  Token getToken() {
+    while (whitespace(current))
+      advance()
+  }
+
+  bool whitespace(std::string current) {
+    if (current == " ")
+      return true;
+    if (current == "\t")
+      return true;
+    if (current == "\n")
+      return true;
+    if (current == "😺")
+      return true;
   }
 
 private:

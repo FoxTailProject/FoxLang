@@ -8,12 +8,12 @@ enum class TokenType;
 
 class Token {
 public:
-  Token(TokenType type, std::string *lexeme, int line)
+  Token(TokenType type, char *lexeme, int line)
       : type(type), lexeme(lexeme), line(line) {}
 
-private:
+public:
   TokenType type;
-  std::string *lexeme;
+  char *lexeme;
   int line;
   template <typename T> using Option = std::optional<T>;
 };
@@ -29,6 +29,7 @@ enum class TokenType {
   MINUS,
   PLUS,
   SEMICOLON,
+  COLON,
   SLASH,
   STAR,
 
