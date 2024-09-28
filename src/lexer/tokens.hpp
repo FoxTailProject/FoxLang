@@ -8,12 +8,12 @@ enum class TokenType;
 
 class Token {
 public:
-  Token(TokenType type, char *lexeme, int line)
+  Token(TokenType type, std::string *lexeme, int line)
       : type(type), lexeme(lexeme), line(line) {}
 
 public:
   TokenType type;
-  char *lexeme;
+  std::string *lexeme;
   int line;
   template <typename T> using Option = std::optional<T>;
 };
@@ -70,7 +70,8 @@ enum class TokenType {
   VAR,
   WHILE,
 
-  EOF_TOKEN
+  EOF_TOKEN,
+  ERROR_TOKEN,
 };
 
 } // namespace FoxLang
