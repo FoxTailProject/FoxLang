@@ -19,3 +19,5 @@ if (true) {
 there will never be any indentation arguments again!
 
 Also if i ever make a formatter, there will be only one idomatic style.
+
+Actually I'm just learning that there is a list of every language and its code block style in [the github linguist repo](https://github.com/github-linguist/linguist/blob/main/lib/linguist/languages.yml)
