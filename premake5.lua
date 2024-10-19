@@ -9,16 +9,17 @@ project "FoxLang"
 	targetdir "bin/%{cfg.system}-%{cfg.buildcfg}-%{cfg.architecture}"
 
 	files {
-	  "src/**.hpp",
-	  "src/**.h",
 	  "src/**.cpp",
-	  "vendor/*/**.hpp",
-	  "vendor/*/**.h"
+      "vendor/**.cpp",
+      "vendor/**.hpp"
 	}
 
 	includedirs {
-	  "src",
-	  "vendor/*"
+	  "src/**.hpp",
+	  "src/**.h",
+	  "vendor/**.hpp",
+	  "vendor/**.h",
+      "vendor/argparse/*.hpp"
 	}
 
 	filter "configurations:Debug"
