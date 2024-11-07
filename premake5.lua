@@ -15,11 +15,9 @@ project "FoxLang"
 	}
 
 	includedirs {
-	  "src/**.hpp",
-	  "src/**.h",
-	  "vendor/**.hpp",
-	  "vendor/**.h",
-      "vendor/argparse/*.hpp"
+	  "src/**",
+	  "src/**",
+	  "vendor/**"
 	}
 
 	filter "configurations:Debug"
