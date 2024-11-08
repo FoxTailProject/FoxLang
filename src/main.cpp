@@ -42,8 +42,8 @@ auto main(int argc, char *argv[]) -> int {
 	FoxLang::Tokenizer tokenizer(&contents);
 	auto tokens = tokenizer.Tokenize();
 
-	FoxLang::ASTGenerator astGenerator(tokens);
-	auto fileTree = astGenerator.GenerateFileTree();
+	// FoxLang::ASTGenerator astGenerator(tokens);
+	// auto fileTree = astGenerator.GenerateFileTree();
 
 	return 0;
 }
