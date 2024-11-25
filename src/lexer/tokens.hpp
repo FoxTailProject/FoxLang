@@ -59,14 +59,14 @@ enum class TokenType {
 	NUMBER,
 
 	// Keywords.
-	CLASS,
+	STRUCT,
 	ELSE,
 	FALSE,
-	FUN,
+	FUNC,
+	EXTERN,
 	FOR,
 	IF,
 	RETURN,
-	SUPER,
 	SELF,
 	TRUE,
 	VAR,

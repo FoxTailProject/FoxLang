@@ -11,7 +11,7 @@ class Tokenizer {
 public:
 	Tokenizer(std::string *source);
 
-	std::vector<Token> *Tokenize() ;
+	std::vector<Token> *Tokenize();
 
 private:
 	inline bool AtEnd();
@@ -55,23 +55,25 @@ private:
 	unsigned long int start = 0;
 	int line = 1;
 
-	struct { std::string name; TokenType value; } keywords[14] = {
+	struct {
+		std::string name;
+		TokenType value;
+	} keywords[15] = {
 		// { .name = "and", .value = TokenType::AND },
-		{ .name = "class", .value = TokenType::CLASS },
-		{ .name = "else", .value = TokenType::ELSE },
-		{ .name = "false", .value = TokenType::FALSE },
-		{ .name = "for", .value = TokenType::FOR },
-		// { .name = "fun", .value = TokenType::FUN },
-		{ .name = "if", .value = TokenType::IF },
+		{.name = "struct", .value = TokenType::STRUCT},
+		{.name = "else", .value = TokenType::ELSE},
+		{.name = "false", .value = TokenType::FALSE},
+		{.name = "for", .value = TokenType::FOR},
+		{.name = "fn", .value = TokenType::FUNC},
+		{.name = "if", .value = TokenType::IF},
 		// { .name = "nil", .value = TokenType::NIL },
 		// { .name = "or", .value = TokenType::OR },
 		// { .name = "print", .value = TokenType::PRINT },
-		{ .name = "return", .value = TokenType::RETURN },
-		{ .name = "super", .value = TokenType::SUPER },
-		{ .name = "self", .value = TokenType::SELF },
-		{ .name = "true", .value = TokenType::TRUE },
-		{ .name = "var", .value = TokenType::VAR },
-		{ .name = "while", .value = TokenType::WHILE }
-	};
+		{.name = "return", .value = TokenType::RETURN},
+		{.name = "self", .value = TokenType::SELF},
+		{.name = "true", .value = TokenType::TRUE},
+		{.name = "var", .value = TokenType::VAR},
+		{.name = "while", .value = TokenType::WHILE},
+		{.name = "extern", .value = TokenType::EXTERN}};
 };
 } // namespace FoxLang
