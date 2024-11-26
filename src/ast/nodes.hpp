@@ -79,16 +79,11 @@ public:
 
 /// GetTokPrecedence - Get the precedence of the pending binary operator token.
 static int GetTokPrecedence() {
-	if (!isascii(CurTok)) return -1;
-
 	// Make sure it's a declared binop.
-	int TokPrec = -1;
 	switch (CurTok) {
 	default:
-		break;
+		return -1;
 	}
-	if (TokPrec <= 0) return -1;
-	return TokPrec;
 }
 
 /// LogError* - These are little helper functions for error handling.
