@@ -7,7 +7,10 @@ namespace FoxLang {
 class TokenStreamer {
 public:
 	TokenStreamer(std::vector<Token>);
-  Token peek();
+	Token *peek();
+	bool match(TokenType);
+	Token *advance();
+	Token *currentToken();
 
 private:
 	std::vector<Token> tokens;

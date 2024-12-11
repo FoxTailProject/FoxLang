@@ -4,8 +4,8 @@
 
 #include "../vendor/argparse/argparse.hpp"
 
+#include "ast/parser.hpp"
 #include "lexer/tokenizer.hpp"
-#include "ast/nodes.hpp"
 
 auto main(int argc, char *argv[]) -> int {
 	argparse::ArgumentParser program("fox", "0.0.1 epsilon");
@@ -45,6 +45,7 @@ auto main(int argc, char *argv[]) -> int {
 	// FoxLang::ASTGenerator astGenerator(tokens);
 	// auto fileTree = astGenerator.GenerateFileTree();
 
-	auto fileTreeNode = FoxLang::ASTNode(FoxLang::ASTNodeType::File);
+	auto streamer = FoxLang::TokenStreamer(*tokens);
+	auto ast = FoxLang::Parser(&streamer);
 	return 0;
 }
