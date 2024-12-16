@@ -7,11 +7,23 @@
 #include "../tokenstreamer.hpp"
 
 namespace FoxLang {
+class AST {
+public:
+	virtual ~AST() = default;
+};
 
 /// ExprAST - Base class for all expression nodes.
-class ExprAST {
+class ExprAST : public AST {
 public:
 	virtual ~ExprAST() = default;
+};
+
+class FileAST : public AST {
+	std::vector<std::unique_ptr<ExprAST>> expressions;
+
+public:
+	FileAST(std::vector<std::unique_ptr<ExprAST>> expressions)
+		: expressions(std::move(expressions)) {}
 };
 
 /// NumberExprAST - Expression class for numeric literals like "1.0".
@@ -44,11 +56,11 @@ public:
 /// CallExprAST - Expression class for function calls.
 class CallExprAST : public ExprAST {
 	std::string Callee;
-	std::vector<std::optional<std::unique_ptr<ExprAST>>> Args;
+	std::vector<std::unique_ptr<ExprAST>> Args;
 
 public:
 	CallExprAST(const std::string &Callee,
-				std::vector<std::optional<std::unique_ptr<ExprAST>>> Args)
+				std::vector<std::unique_ptr<ExprAST>> Args)
 		: Callee(Callee), Args(std::move(Args)) {}
 };
 
@@ -78,9 +90,9 @@ public:
 };
 
 /// GetTokPrecedence - Get the precedence of the pending binary operator token.
-inline int GetTokPrecedence(Token *token) {
+inline int getPrecedence(TokenType token) {
 	// Make sure it's a declared binop.
-	switch (token->type) {
+	switch (token) {
 	default:
 		return -1;
 	}

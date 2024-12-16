@@ -5,13 +5,14 @@ namespace FoxLang {
 /// numberexpr ::= number
 std::unique_ptr<ExprAST> Parser::ParseNumberExpr() {
 	auto Result = std::make_unique<NumberExprAST>(streamer->advance()->lexeme);
-	streamer->peek(); // consume the number
+	// streamer->peek(); // consume the number
 	return std::move(Result);
 }
 
 /// parenexpr ::= '(' expression ')'
 std::unique_ptr<ExprAST> Parser::ParseParenExpr() {
 	// streamer->peek(); // eat (.
+	streamer->advance();
 	auto V = ParseExpression();
 	if (!V) return nullptr;
 
@@ -49,7 +50,7 @@ std::unique_ptr<ExprAST> Parser::ParseIdentifierExpr() {
 	}
 
 	// Eat the ')'.
-	streamer->peek();
+	streamer->advance();
 
 	return std::make_unique<CallExprAST>(token->lexeme, std::move(Args));
 }
@@ -85,7 +86,7 @@ std::unique_ptr<ExprAST> Parser::ParseBinOpRHS(int ExprPrec,
 		if (TokPrec < ExprPrec) return LHS;
 
 		// Okay, we know this is a binop.
-		Token *BinOp = streamer->peek();
+		Token *BinOp = streamer->advance();
 
 		// Parse the primary expression after the binary operator.
 		auto RHS = ParsePrimary();
@@ -141,14 +142,14 @@ std::unique_ptr<PrototypeAST> Parser::ParsePrototype() {
 		return LogErrorP("Expected ')' in prototype");
 
 	// success.
-	streamer->peek(); // eat ')'.
+	streamer->advance(); // eat ')'.
 
 	return std::make_unique<PrototypeAST>(FnName, std::move(ArgNames));
 }
 
 /// definition ::= 'def' prototype expression
 std::unique_ptr<FunctionAST> Parser::ParseDefinition() {
-	streamer->peek(); // eat def.
+	streamer->advance(); // eat def.
 	auto Proto = ParsePrototype();
 	if (!Proto) return nullptr;
 
@@ -170,7 +171,7 @@ std::unique_ptr<FunctionAST> Parser::ParseTopLevelExpr() {
 
 /// external ::= 'extern' prototype
 std::unique_ptr<PrototypeAST> Parser::ParseExtern() {
-	streamer->peek(); // eat extern.
+	streamer->advance(); // eat extern.
 	return ParsePrototype();
 }
 
@@ -207,7 +208,7 @@ void Parser::HandleTopLevelExpression() {
 }
 
 /// top ::= definition | external | expression | ';'
-Parser::Parser(TokenStreamer *streamer) : streamer() {
+Parser::Parser(TokenStreamer *streamer) : streamer(streamer) {
 	while (true) {
 		auto token = streamer->peek();
 		switch (token->type) {

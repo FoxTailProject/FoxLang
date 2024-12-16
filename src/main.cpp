@@ -40,12 +40,12 @@ auto main(int argc, char *argv[]) -> int {
 	//   std::cout << line << std::endl;
 	// }
 	FoxLang::Tokenizer tokenizer(&contents);
-	auto tokens = tokenizer.Tokenize();
+	std::vector<FoxLang::Token> *tokens = tokenizer.Tokenize();
 
 	// FoxLang::ASTGenerator astGenerator(tokens);
 	// auto fileTree = astGenerator.GenerateFileTree();
 
-	auto streamer = FoxLang::TokenStreamer(*tokens);
-	auto ast = FoxLang::Parser(&streamer);
+	FoxLang::Parser ast(tokens);
+
 	return 0;
 }
