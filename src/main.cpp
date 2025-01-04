@@ -46,6 +46,7 @@ auto main(int argc, char *argv[]) -> int {
 	// auto fileTree = astGenerator.GenerateFileTree();
 
 	FoxLang::Parser ast(tokens);
+	auto tree = ast.parse();
 
 	return 0;
 }

@@ -5,19 +5,28 @@ workspace "FoxLang"
 project "FoxLang"
     kind "ConsoleApp"
 	language "C++"
-	cppdialect "C++17"
+	cppdialect "C++20"
+	toolset "clang"
 	targetdir "bin/%{cfg.system}-%{cfg.buildcfg}-%{cfg.architecture}"
+
+	--[[ if _OPTIONS["gcc"] then
+		buildoptions { "-std=c++20" }
+	elseif _OPTIONS["clang"] then
+		buildoptions { "-std=c++20" }
+	elseif _OPTIONS["msvc"] then
+		buildoptions { "/std:c++20" }
+	end ]]--
 
 	files {
 	  "src/**.cpp",
       "vendor/**.cpp",
-      "vendor/**.hpp"
+	  "vendor/**.c",
+	  "vendor/**.cc",
 	}
 
 	includedirs {
-	  "src/**",
-	  "src/**",
-	  "vendor/**"
+	  "src/",
+	  "vendor/"
 	}
 
 	filter "configurations:Debug"
