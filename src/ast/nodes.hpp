@@ -12,12 +12,12 @@ public:
 };
 
 /// ExprAST - Base class for all expression nodes.
-class ExprAST : AST {
-public:
-	virtual ~ExprAST() = default;
-};
+class ExprAST : AST {};
+
+class StmtAST : AST {};
 
 class FileAST : public AST {
+
 	std::string name;
 	std::vector<std::unique_ptr<AST>> expressions;
 
@@ -65,7 +65,24 @@ public:
 		: Callee(Callee), Args(std::move(Args)) {}
 };
 
+class VarDecl : public StmtAST {
+	std::string name;
+	std::unique_ptr<ExprAST> value;
+
+public:
+	VarDecl(const std::string &name, std::unique_ptr<ExprAST> value)
+		: name(name), value(std::move(value)) {}
+};
+
+class ExprStmt : public StmtAST {
+	std::unique_ptr<ExprAST> value;
+
+public:
+	ExprStmt(std::unique_ptr<ExprAST> value) : value(std::move(value)) {}
+};
+
 class TypeAST : public AST {
+
 	std::string ident;
 
 public:
