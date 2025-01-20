@@ -1,10 +1,9 @@
 #pragma once
 
+#include "../tokenstreamer.hpp"
 #include <memory>
 #include <string>
 #include <vector>
-
-#include "../tokenstreamer.hpp"
 
 namespace FoxLang {
 class AST {
@@ -27,15 +26,6 @@ public:
 			std::vector<std::unique_ptr<AST>> &&expressions)
 		: name(name), expressions(std::move(expressions)) {}
 };
-
-//
-// class FileAST {
-// 	std::vector<std::unique_ptr<ExprAST>> expressions;
-//
-// public:
-// 	explicit FileAST(std::vector<std::unique_ptr<ExprAST>> expressions)
-// 		: expressions(expressions) {}
-// };
 
 /// NumberExprAST - Expression class for numeric literals like "1.0".
 class NumberExprAST : public ExprAST {
@@ -82,6 +72,14 @@ public:
 	explicit TypeAST(const std::string &ident) : ident(ident) {}
 };
 
+class BlockAST : public AST {
+	std::vector<std::unique_ptr<ExprAST>> content;
+
+public:
+	BlockAST(std::vector<std::unique_ptr<ExprAST>> content)
+		: content(std::move(content)) {}
+};
+
 /// PrototypeAST - This class represents the "prototype" for a function,
 /// which captures its name, and its argument names (thus implicitly the number
 /// of arguments the function takes).
@@ -90,11 +88,14 @@ class PrototypeAST : public AST {
 	std::string Name;
 	std::vector<std::string> Args;
 	std::vector<std::unique_ptr<TypeAST>> Types;
+	std::unique_ptr<TypeAST> retType;
 
 public:
 	PrototypeAST(const std::string &Name, std::vector<std::string> Args,
-				 std::vector<std::unique_ptr<TypeAST>> Types)
-		: Name(Name), Args(std::move(Args)), Types(std::move(Types)) {}
+				 std::vector<std::unique_ptr<TypeAST>> Types,
+				 std::unique_ptr<TypeAST> retType)
+		: Name(Name), Args(std::move(Args)), Types(std::move(Types)),
+		  retType(std::move(retType)) {}
 
 	const std::string &getName() const { return Name; }
 };
@@ -102,11 +103,11 @@ public:
 /// FunctionAST - This class represents a function definition itself.
 class FunctionAST : public AST {
 	std::unique_ptr<PrototypeAST> Proto;
-	std::unique_ptr<ExprAST> Body;
+	std::unique_ptr<BlockAST> Body;
 
 public:
 	FunctionAST(std::unique_ptr<PrototypeAST> Proto,
-				std::unique_ptr<ExprAST> Body)
+				std::unique_ptr<BlockAST> Body)
 		: Proto(std::move(Proto)), Body(std::move(Body)) {}
 };
 
@@ -114,6 +115,14 @@ public:
 inline int getPrecedence(TokenType token) {
 	// Make sure it's a declared binop.
 	switch (token) {
+	case TokenType::LESS:
+		return 10;
+	case TokenType::MINUS:
+	case TokenType::PLUS:
+		return 20;
+	case TokenType::STAR:
+	case TokenType::SLASH:
+		return 40;
 	default:
 		return -1;
 	}

@@ -19,6 +19,7 @@ private:
 	std::optional<std::unique_ptr<ExprAST>> parseIdentifierExpr();
 	std::optional<std::unique_ptr<ExprAST>> parsePrimary();
 	std::optional<std::unique_ptr<ExprAST>> parseExpression();
+	std::optional<std::unique_ptr<BlockAST>> parseBlock();
 	std::optional<std::unique_ptr<TypeAST>> parseType();
 	std::optional<std::unique_ptr<PrototypeAST>> parsePrototype();
 	std::optional<std::unique_ptr<FunctionAST>> parseDefinition();

@@ -81,6 +81,31 @@ std::optional<std::unique_ptr<ExprAST>> Parser::parseExpression() {
 	return parseBinOpRHS(0, std::move(lhs));
 }
 
+std::optional<std::unique_ptr<BlockAST>> Parser::parseBlock() {
+	if (current->type != TokenType::LEFT_BRACKET) {
+		LogError("Expected '{' to start block");
+		return std::nullopt;
+	}
+	current++;
+
+	auto expr = parseExpression();
+	if (!expr) {
+		LogError("Expected expression in block");
+		return std::nullopt;
+	}
+
+	std::vector<std::unique_ptr<ExprAST>> content;
+	content.push_back(std::move(expr.value()));
+
+	if (current->type != TokenType::RIGHT_BRACKET) {
+		LogError("Expected '}' to close block");
+		return std::nullopt;
+	}
+	current++;
+
+	return std::make_unique<BlockAST>(std::move(content));
+}
+
 std::optional<std::unique_ptr<ExprAST>>
 Parser::parseBinOpRHS(int precedence,
 					  std::optional<std::unique_ptr<ExprAST>> lhs) {
@@ -106,6 +131,11 @@ Parser::parseBinOpRHS(int precedence,
 }
 
 std::optional<std::unique_ptr<TypeAST>> Parser::parseType() {
+	if (current->type != TokenType::IDENTIFIER) {
+		LogError("Unable to parse type");
+		return std::nullopt;
+	}
+
 	std::string type = current->lexeme;
 	current++;
 	return std::make_unique<TypeAST>(type);
@@ -127,11 +157,13 @@ std::optional<std::unique_ptr<PrototypeAST>> Parser::parsePrototype() {
 
 	std::vector<std::string> argNames;
 	std::vector<std::unique_ptr<TypeAST>> typeNames;
-	while ((current++)->type == TokenType::IDENTIFIER) {
-		argNames.push_back(current->lexeme);
-		current++;
+	current++; // Consume the ( and begin parsing the args
 
-		auto type = parseType();
+	while (current->type == TokenType::IDENTIFIER) {
+		argNames.push_back(current->lexeme);
+		current++; // Consume the IDENTIFIER arg name
+
+		auto type = parseType(); // Consumes IDENTIFIERs for the type
 		if (!type) {
 			LogErrorP("Unable to parse type");
 			return std::nullopt;
@@ -139,10 +171,11 @@ std::optional<std::unique_ptr<PrototypeAST>> Parser::parsePrototype() {
 
 		typeNames.push_back(std::move(type.value()));
 
-		if ((current++)->type != TokenType::COMMA) {
-			LogErrorP("Expected ',' between arguments");
-			return std::nullopt;
+		if (current->type != TokenType::COMMA) {
+			break;
 		}
+
+		current++;
 	}
 
 	if (current->type != TokenType::RIGHT_PAREN) {
@@ -151,8 +184,15 @@ std::optional<std::unique_ptr<PrototypeAST>> Parser::parsePrototype() {
 	}
 
 	current++;
+	auto retType = parseType();
+	if (!retType) {
+		LogError("Unable to parse return type of function");
+		return std::nullopt;
+	}
+
 	return std::make_unique<PrototypeAST>(name, std::move(argNames),
-										  std::move(typeNames));
+										  std::move(typeNames),
+										  std::move(retType.value()));
 }
 
 std::optional<std::unique_ptr<FunctionAST>> Parser::parseDefinition() {
@@ -160,7 +200,7 @@ std::optional<std::unique_ptr<FunctionAST>> Parser::parseDefinition() {
 	auto proto = parsePrototype();
 	if (!proto) return std::nullopt;
 
-	auto expr = parseExpression();
+	auto expr = parseBlock();
 	if (!expr) return std::nullopt;
 
 	return std::make_unique<FunctionAST>(std::move(proto.value()),
@@ -184,11 +224,11 @@ FileAST *Parser::parse() {
 			// fileNodes.push_back(
 			// static_cast<ExprAST *>(definition.value().release()));
 		} break;
-		default:
+		default: {
 			LogError(fmt::format("Unexpected character '{}'", current->lexeme)
 						 .c_str());
 			current++;
-			break;
+		} break;
 		}
 	}
 }
