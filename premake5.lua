@@ -37,6 +37,6 @@ project "FoxLang"
 	filter "configurations:Release"
 	    defines { "FOX_RELEASE" }
 		optimize "On"
-        warnings "Default"
+        warnings "Extra"
 
 include "premake/actions.lua"
