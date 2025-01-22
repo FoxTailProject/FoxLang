@@ -69,7 +69,9 @@ enum class TokenType {
 	RETURN,
 	SELF,
 	TRUE,
-	VAR,
+	LET,
+	CONST,
+	MUT,
 	WHILE,
 
 	EOF_TOKEN,

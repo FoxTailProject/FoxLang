@@ -141,6 +141,45 @@ std::optional<std::unique_ptr<TypeAST>> Parser::parseType() {
 	return std::make_unique<TypeAST>(type);
 }
 
+std::optional<std::unique_ptr<VarDecl>> Parser::parseLet() {
+	// Move past `let` token, onto either a `mut` token or the var name
+	current++;
+
+	bool mut = false;
+	if (current->type == TokenType::MUT) {
+		mut = true;
+		current++;
+	}
+
+	std::string name = current->lexeme;
+	current++;
+	auto type = parseType();
+
+	if (!type) {
+		LogError("Type inference is not yet implemented. If you wrote Haskell, "
+				 "send me an email");
+		return std::nullopt;
+	}
+
+	if (current->type == TokenType::SEMICOLON) {
+		return std::make_unique<VarDecl>(name, std::nullopt, mut);
+	}
+
+	if (current->type != TokenType::EQUAL) {
+		LogError("You need an equal sign zidiot");
+		return std::nullopt;
+	}
+
+	auto value = parseExpression();
+	if (!value) {
+		LogError("You need an expression after the =");
+		LogError("Im done with errors rn");
+		return std::nullopt;
+	}
+
+	return std::make_unique<VarDecl>(name, std::move(value), mut);
+}
+
 std::optional<std::unique_ptr<PrototypeAST>> Parser::parsePrototype() {
 	if (current->type != TokenType::IDENTIFIER) {
 		LogErrorP("Expected function name in prototype");

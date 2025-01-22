@@ -1,6 +1,7 @@
 #pragma once
 
-#include "../tokenstreamer.hpp"
+#include "../lexer/tokens.hpp"
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -67,11 +68,13 @@ public:
 
 class VarDecl : public StmtAST {
 	std::string name;
-	std::unique_ptr<ExprAST> value;
+	std::optional<std::unique_ptr<ExprAST>> value;
+	bool mut;
 
 public:
-	VarDecl(const std::string &name, std::unique_ptr<ExprAST> value)
-		: name(name), value(std::move(value)) {}
+	VarDecl(const std::string &name,
+			std::optional<std::unique_ptr<ExprAST>> value, bool mut)
+		: name(name), value(std::move(value)), mut(mut) {}
 };
 
 class ExprStmt : public StmtAST {

@@ -56,25 +56,26 @@ private:
 	unsigned long int start = 0;
 	int line = 1;
 
+	// clang-format off
 	struct {
 		std::string name;
 		TokenType value;
-	} keywords[15] = {
-		// { .name = "and", .value = TokenType::AND },
-		{.name = "struct", .value = TokenType::STRUCT},
-		{.name = "else", .value = TokenType::ELSE},
-		{.name = "false", .value = TokenType::FALSE},
-		{.name = "for", .value = TokenType::FOR},
-		{.name = "fn", .value = TokenType::FUNC},
-		{.name = "if", .value = TokenType::IF},
-		// { .name = "nil", .value = TokenType::NIL },
-		// { .name = "or", .value = TokenType::OR },
-		// { .name = "print", .value = TokenType::PRINT },
-		{.name = "return", .value = TokenType::RETURN},
-		{.name = "self", .value = TokenType::SELF},
-		{.name = "true", .value = TokenType::TRUE},
-		{.name = "var", .value = TokenType::VAR},
-		{.name = "while", .value = TokenType::WHILE},
-		{.name = "extern", .value = TokenType::EXTERN}};
+	} keywords[13] = {
+		{.name = "struct",	.value = TokenType::STRUCT},
+		{.name = "else",	.value = TokenType::ELSE},
+		{.name = "false",	.value = TokenType::FALSE},
+		{.name = "for",		.value = TokenType::FOR},
+		{.name = "fn",		.value = TokenType::FUNC},
+		{.name = "if",		.value = TokenType::IF},
+		{.name = "return",	.value = TokenType::RETURN},
+		{.name = "self",	.value = TokenType::SELF},
+		{.name = "true",	.value = TokenType::TRUE},
+		{.name = "let",		.value = TokenType::LET},
+		{.name = "const",	.value = TokenType::CONST},
+		{.name = "while",	.value = TokenType::WHILE},
+		{.name = "extern",	.value = TokenType::EXTERN}
+	};
+
+	// clang-format on
 };
 } // namespace FoxLang
