@@ -93,10 +93,10 @@ public:
 };
 
 class BlockAST : public AST {
-	std::vector<std::unique_ptr<ExprAST>> content;
+	std::vector<std::unique_ptr<StmtAST>> content;
 
 public:
-	BlockAST(std::vector<std::unique_ptr<ExprAST>> content)
+	BlockAST(std::vector<std::unique_ptr<StmtAST>> content)
 		: content(std::move(content)) {}
 };
 

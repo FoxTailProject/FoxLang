@@ -33,8 +33,8 @@ std::optional<std::unique_ptr<ExprAST>> Parser::parseIdentifierExpr() {
 	std::string identifierString = current->lexeme;
 	current++;
 
-	if (current->type != TokenType::LEFT_PAREN) // Simple variable ref.
-		return std::make_unique<VariableExprAST>(identifierString);
+	// if (current->type != TokenType::LEFT_PAREN) // Simple variable ref.
+	// return std::make_unique<VariableExprAST>(identifierString);
 
 	// Call.
 	std::vector<std::unique_ptr<ExprAST>> Args;
@@ -81,6 +81,28 @@ std::optional<std::unique_ptr<ExprAST>> Parser::parseExpression() {
 	return parseBinOpRHS(0, std::move(lhs));
 }
 
+std::optional<std::unique_ptr<StmtAST>> Parser::parseStatement() {
+	if (current->type == TokenType::LET) return parseLet();
+
+	return parseExprStatement();
+}
+
+std::optional<std::unique_ptr<ExprStmt>> Parser::parseExprStatement() {
+	auto expr = parseExpression();
+	if (!expr) {
+		LogError("Expected expression");
+		return std::nullopt;
+	}
+
+	if (current->type != TokenType::SEMICOLON) {
+		LogError("expected ; after expression");
+		return std::nullopt;
+	}
+	current++;
+
+	return std::make_unique<ExprStmt>(std::move(expr.value()));
+}
+
 std::optional<std::unique_ptr<BlockAST>> Parser::parseBlock() {
 	if (current->type != TokenType::LEFT_BRACKET) {
 		LogError("Expected '{' to start block");
@@ -88,14 +110,14 @@ std::optional<std::unique_ptr<BlockAST>> Parser::parseBlock() {
 	}
 	current++;
 
-	auto expr = parseExpression();
-	if (!expr) {
+	auto stmt = parseStatement();
+	if (!stmt) {
 		LogError("Expected expression in block");
 		return std::nullopt;
 	}
 
-	std::vector<std::unique_ptr<ExprAST>> content;
-	content.push_back(std::move(expr.value()));
+	std::vector<std::unique_ptr<StmtAST>> content;
+	content.push_back(std::move(stmt.value()));
 
 	if (current->type != TokenType::RIGHT_BRACKET) {
 		LogError("Expected '}' to close block");
