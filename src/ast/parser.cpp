@@ -82,6 +82,7 @@ std::optional<std::unique_ptr<ExprAST>> Parser::parseExpression() {
 }
 
 std::optional<std::unique_ptr<StmtAST>> Parser::parseStatement() {
+	std::cout << (int)current->type << ", " << current->lexeme << std::endl;
 	if (current->type == TokenType::LET) return parseLet();
 
 	return parseExprStatement();
@@ -110,21 +111,20 @@ std::optional<std::unique_ptr<BlockAST>> Parser::parseBlock() {
 	}
 	current++;
 
-	auto stmt = parseStatement();
-	if (!stmt) {
-		LogError("Expected expression in block");
-		return std::nullopt;
-	}
-
 	std::vector<std::unique_ptr<StmtAST>> content;
-	content.push_back(std::move(stmt.value()));
 
-	if (current->type != TokenType::RIGHT_BRACKET) {
-		LogError("Expected '}' to close block");
-		return std::nullopt;
+	while (true) {
+		auto stmt = parseStatement();
+		if (!stmt) {
+			LogError("Expected expression in block");
+			return std::nullopt;
+		}
+
+		content.push_back(std::move(stmt.value()));
+		if (current->type == TokenType::RIGHT_BRACKET) break;
 	}
-	current++;
 
+	current++;
 	return std::make_unique<BlockAST>(std::move(content));
 }
 
