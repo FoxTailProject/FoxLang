@@ -64,7 +64,11 @@ std::optional<std::unique_ptr<ExprAST>> Parser::parseIdentifierExpr() {
 std::optional<std::unique_ptr<ExprAST>> Parser::parsePrimary() {
 	switch (current->type) {
 	default:
-		return LogError("unknown token when expecting an expression");
+		return LogError(
+			fmt::format(
+				"unknown token {} when expecting an expression on line {}",
+				current->lexeme, current->line)
+				.c_str());
 	case TokenType::IDENTIFIER:
 		return parseIdentifierExpr();
 	case TokenType::NUMBER:
@@ -82,7 +86,6 @@ std::optional<std::unique_ptr<ExprAST>> Parser::parseExpression() {
 }
 
 std::optional<std::unique_ptr<StmtAST>> Parser::parseStatement() {
-	std::cout << (int)current->type << ", " << current->lexeme << std::endl;
 	if (current->type == TokenType::LET) return parseLet();
 
 	return parseExprStatement();
@@ -191,6 +194,7 @@ std::optional<std::unique_ptr<VarDecl>> Parser::parseLet() {
 		LogError("You need an equal sign zidiot");
 		return std::nullopt;
 	}
+	current++; // move past = onto the expression
 
 	auto value = parseExpression();
 	if (!value) {
@@ -198,6 +202,7 @@ std::optional<std::unique_ptr<VarDecl>> Parser::parseLet() {
 		LogError("Im done with errors rn");
 		return std::nullopt;
 	}
+	current++;
 
 	return std::make_unique<VarDecl>(name, std::move(value), mut);
 }
