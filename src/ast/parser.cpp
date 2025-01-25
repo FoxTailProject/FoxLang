@@ -33,8 +33,8 @@ std::optional<std::unique_ptr<ExprAST>> Parser::parseIdentifierExpr() {
 	std::string identifierString = current->lexeme;
 	current++;
 
-	// if (current->type != TokenType::LEFT_PAREN) // Simple variable ref.
-	// return std::make_unique<VariableExprAST>(identifierString);
+	if (current->type != TokenType::LEFT_PAREN) // Simple variable ref.
+		return std::make_unique<VariableExprAST>(identifierString);
 
 	// Call.
 	std::vector<std::unique_ptr<ExprAST>> Args;
