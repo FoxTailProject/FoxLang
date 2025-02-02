@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../lexer/tokens.hpp"
+#include <fmt/core.h>
 
 #include <memory>
 #include <string>
@@ -10,12 +11,19 @@ namespace FoxLang {
 class AST {
 public:
 	virtual ~AST() = default;
+
+	virtual std::vector<AST *> getChildren() const {
+		std::vector<AST *> r;
+		return r;
+	}
+
+	virtual std::string printName() const { return "unimpl"; }
 };
 
 /// ExprAST - Base class for all expression nodes.
-class ExprAST : AST {};
+class ExprAST : public AST {};
 
-class StmtAST : AST {};
+class StmtAST : public AST {};
 
 class FileAST : public AST {
 
@@ -26,6 +34,17 @@ public:
 	FileAST(const std::string &name,
 			std::vector<std::unique_ptr<AST>> &&expressions)
 		: name(name), expressions(std::move(expressions)) {}
+
+	std::vector<AST *> getChildren() const {
+		std::vector<AST *> rets;
+
+		for (size_t i = 0; i < expressions.size(); i++) {
+			rets.push_back(expressions[i].get());
+		}
+		return rets;
+	}
+
+	std::string printName() const { return fmt::format("FileAST ({})", name); }
 };
 
 /// NumberExprAST - Expression class for numeric literals like "1.0".
@@ -34,6 +53,10 @@ class NumberExprAST : public ExprAST {
 
 public:
 	explicit NumberExprAST(const std::string &Val) : Val(Val) {}
+
+	std::string printName() const {
+		return fmt::format("NumberExprAST ({})", Val);
+	}
 };
 
 /// VariableExprAST - Expression class for referencing a variable, like "a".
@@ -42,6 +65,10 @@ class VariableExprAST : public ExprAST {
 
 public:
 	explicit VariableExprAST(const std::string &Name) : Name(Name) {}
+
+	std::string printName() const {
+		return fmt::format("VariableExprAST ({})", Name);
+	}
 };
 
 /// BinaryExprAST - Expression class for a binary operator.
@@ -53,6 +80,17 @@ public:
 	BinaryExprAST(Token Op, std::unique_ptr<ExprAST> LHS,
 				  std::unique_ptr<ExprAST> RHS)
 		: Op(Op), LHS(std::move(LHS)), RHS(std::move(RHS)) {}
+
+	std::vector<AST *> getChildren() const {
+		std::vector<AST *> r;
+		r.push_back(LHS.get());
+		r.push_back(RHS.get());
+		return r;
+	}
+
+	std::string printName() const {
+		return fmt::format("BinaryExprAST ({})", Op.lexeme);
+	}
 };
 
 /// CallExprAST - Expression class for function calls.
@@ -64,6 +102,19 @@ public:
 	CallExprAST(const std::string &Callee,
 				std::vector<std::unique_ptr<ExprAST>> Args)
 		: Callee(Callee), Args(std::move(Args)) {}
+
+	std::vector<AST *> getChildren() const {
+		std::vector<AST *> rets;
+
+		for (size_t i = 0; i < Args.size(); i++) {
+			rets.push_back(Args[i].get());
+		}
+		return rets;
+	}
+
+	std::string printName() const {
+		return fmt::format("CallExpr ({})", Callee);
+	}
 };
 
 class VarDecl : public StmtAST {
@@ -75,6 +126,22 @@ public:
 	VarDecl(const std::string &name,
 			std::optional<std::unique_ptr<ExprAST>> value, bool mut)
 		: name(name), value(std::move(value)), mut(mut) {}
+
+	std::vector<AST *> getChildren() const {
+		std::vector<AST *> rets;
+
+		if (value) rets.push_back(value.value().get());
+		return rets;
+	}
+
+	std::string printName() const { return fmt::format("VarDecl ({})", name); }
+};
+
+class ReturnStmt : public StmtAST {
+	std::unique_ptr<ExprAST> value;
+
+public:
+	ReturnStmt(std::unique_ptr<ExprAST> value) : value(std::move(value)) {}
 };
 
 class ExprStmt : public StmtAST {
@@ -82,6 +149,14 @@ class ExprStmt : public StmtAST {
 
 public:
 	ExprStmt(std::unique_ptr<ExprAST> value) : value(std::move(value)) {}
+
+	std::vector<AST *> getChildren() const {
+		std::vector<AST *> r;
+		r.push_back(value.get());
+		return r;
+	}
+
+	std::string printName() const { return fmt::format("ExprStmt"); }
 };
 
 class TypeAST : public AST {
@@ -90,6 +165,8 @@ class TypeAST : public AST {
 
 public:
 	explicit TypeAST(const std::string &ident) : ident(ident) {}
+
+	std::string printName() const { return fmt::format("TypeAST ({})", ident); }
 };
 
 class BlockAST : public AST {
@@ -98,6 +175,17 @@ class BlockAST : public AST {
 public:
 	BlockAST(std::vector<std::unique_ptr<StmtAST>> content)
 		: content(std::move(content)) {}
+
+	std::vector<AST *> getChildren() const {
+		std::vector<AST *> rets;
+
+		for (size_t i = 0; i < content.size(); i++) {
+			rets.push_back(content[i].get());
+		}
+		return rets;
+	}
+
+	std::string printName() const { return "BlockAST"; }
 };
 
 /// PrototypeAST - This class represents the "prototype" for a function,
@@ -118,6 +206,20 @@ public:
 		  retType(std::move(retType)) {}
 
 	const std::string &getName() const { return Name; }
+
+	std::vector<AST *> getChildren() const {
+		std::vector<AST *> rets;
+
+		for (size_t i = 0; i < Types.size(); i++) {
+			rets.push_back(Types[i].get());
+		}
+		rets.push_back(retType.get());
+		return rets;
+	}
+
+	std::string printName() const {
+		return fmt::format("Prototype ({}, {} args)", Name, Args.size());
+	}
 };
 
 /// FunctionAST - This class represents a function definition itself.
@@ -129,6 +231,15 @@ public:
 	FunctionAST(std::unique_ptr<PrototypeAST> Proto,
 				std::unique_ptr<BlockAST> Body)
 		: Proto(std::move(Proto)), Body(std::move(Body)) {}
+
+	std::vector<AST *> getChildren() const {
+		std::vector<AST *> r;
+		r.push_back(Proto.get());
+		r.push_back(Body.get());
+		return r;
+	}
+
+	std::string printName() const { return "Function"; }
 };
 
 /// GetTokPrecedence - Get the precedence of the pending binary operator token.

@@ -7,6 +7,10 @@
 #include "ast/parser.hpp"
 #include "lexer/tokenizer.hpp"
 
+void printTree(const std::string &prefix, const FoxLang::AST *node,
+			   bool isLeft);
+void printTree(const FoxLang::AST *node);
+
 auto main(int argc, char *argv[]) -> int {
 	argparse::ArgumentParser program("fox", "0.0.1 epsilon");
 
@@ -47,6 +51,30 @@ auto main(int argc, char *argv[]) -> int {
 
 	FoxLang::Parser ast(tokens);
 	auto tree = ast.parse();
+	printTree(tree);
 
 	return 0;
 }
+
+void printTree(const std::string &prefix, const FoxLang::AST *node,
+			   bool isLast) {
+	if (node != nullptr) {
+		std::cout << prefix;
+
+		std::cout << (isLast ? "└──" : "├──");
+
+		// print the value of the node
+		std::cout << node->printName() << std::endl;
+
+		auto children = node->getChildren();
+		if (children.empty()) return;
+
+		// enter the next tree level - left and right branch
+		for (size_t i = 0; i < children.size() - 1; i++) {
+			printTree(prefix + (!isLast ? "│   " : "    "), children[i], false);
+		}
+		printTree(prefix + (!isLast ? "│   " : "    "), children.back(), true);
+	}
+}
+
+void printTree(const FoxLang::AST *node) { printTree("", node, false); }
