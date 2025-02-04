@@ -142,6 +142,14 @@ class ReturnStmt : public StmtAST {
 
 public:
 	ReturnStmt(std::unique_ptr<ExprAST> value) : value(std::move(value)) {}
+
+	std::vector<AST *> getChildren() const {
+		std::vector<AST *> r;
+		r.push_back(value.get());
+		return r;
+	}
+
+	std::string printName() const { return "Return"; }
 };
 
 class ExprStmt : public StmtAST {
@@ -218,7 +226,7 @@ public:
 	}
 
 	std::string printName() const {
-		return fmt::format("Prototype ({}, {} args)", Name, Args.size());
+		return fmt::format("Prototype ({}, {} params)", Name, Args.size());
 	}
 };
 

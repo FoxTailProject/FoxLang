@@ -35,24 +35,36 @@ std::optional<std::unique_ptr<ExprAST>> Parser::parseIdentifierExpr() {
 
 	if (current->type != TokenType::LEFT_PAREN) // Simple variable ref.
 		return std::make_unique<VariableExprAST>(identifierString);
+	current++;
 
 	// Call.
 	std::vector<std::unique_ptr<ExprAST>> Args;
-	if (current->type != TokenType::RIGHT_PAREN) {
-		while (true) {
-			if (auto Arg = parseExpression().value())
-				Args.push_back(std::move(Arg));
-			else
-				return std::nullopt;
+	// if (current->type != TokenType::RIGHT_PAREN) {
+	// while (true) {
+	// if (auto Arg = parseExpression().value())
+	// Args.push_back(std::move(Arg));
+	// else
+	// return std::nullopt;
+	//
+	// if (current->type == TokenType::RIGHT_PAREN) break;
+	//
+	// if (current->type != TokenType::COMMA) {
+	// LogError("Expected ')' or ',' in argument list");
+	// return std::nullopt;
+	// }
+	// current++;
+	// }
+	// }
 
-			if (current->type == TokenType::RIGHT_PAREN) break;
-
-			if (current->type != TokenType::COMMA) {
-				LogError("Expected ')' or ',' in argument list");
-				return std::nullopt;
-			}
-			current++;
+	while (current->type != TokenType::RIGHT_PAREN) {
+		auto arg = parseExpression();
+		if (!arg) {
+			LogError("unable to parse expression");
+			return std::nullopt;
 		}
+		Args.push_back(std::move(arg.value()));
+
+		if (current->type == TokenType::COMMA) current++;
 	}
 
 	// Eat the ')'.
@@ -87,6 +99,7 @@ std::optional<std::unique_ptr<ExprAST>> Parser::parseExpression() {
 
 std::optional<std::unique_ptr<StmtAST>> Parser::parseStatement() {
 	if (current->type == TokenType::LET) return parseLet();
+	if (current->type == TokenType::RETURN) return parseReturnStmt();
 
 	return parseExprStatement();
 }
@@ -271,6 +284,14 @@ std::optional<std::unique_ptr<FunctionAST>> Parser::parseDefinition() {
 
 	return std::make_unique<FunctionAST>(std::move(proto.value()),
 										 std::move(expr.value()));
+}
+
+std::optional<std::unique_ptr<ReturnStmt>> Parser::parseReturnStmt() {
+	current++;
+	auto expr = parseExpression();
+	if (!expr) return std::nullopt;
+	current++;
+	return std::make_unique<ReturnStmt>(std::move(expr.value()));
 }
 
 FileAST *Parser::parse() {

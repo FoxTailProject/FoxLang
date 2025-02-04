@@ -26,6 +26,7 @@ private:
 	std::optional<std::unique_ptr<TypeAST>> parseType();
 	std::optional<std::unique_ptr<PrototypeAST>> parsePrototype();
 	std::optional<std::unique_ptr<FunctionAST>> parseDefinition();
+	std::optional<std::unique_ptr<ReturnStmt>> parseReturnStmt();
 
 	std::optional<std::unique_ptr<ExprAST>>
 	parseBinOpRHS(int, std::optional<std::unique_ptr<ExprAST>>);
