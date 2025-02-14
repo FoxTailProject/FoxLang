@@ -1,4 +1,4 @@
-#include "parser.hpp"
+#include "parser.h"
 #include <fmt/format.h>
 #include <iostream>
 
@@ -6,13 +6,13 @@ namespace FoxLang {
 Parser::Parser(std::vector<Token> *tokens)
 	: tokens(tokens), current(tokens->begin()) {}
 
-std::optional<std::unique_ptr<ExprAST>> Parser::parseNumberExpr() {
-	auto ret = std::make_unique<NumberExprAST>(current->lexeme);
+std::optional<std::shared_ptr<ExprAST>> Parser::parseNumberExpr() {
+	auto ret = std::make_shared<NumberExprAST>(current->lexeme);
 	current++;
 	return ret;
 }
 
-std::optional<std::unique_ptr<ExprAST>> Parser::parseParenExpr() {
+std::optional<std::shared_ptr<ExprAST>> Parser::parseParenExpr() {
 	current++;
 	auto expression = parseExpression();
 
@@ -29,16 +29,16 @@ std::optional<std::unique_ptr<ExprAST>> Parser::parseParenExpr() {
 	return expression;
 }
 
-std::optional<std::unique_ptr<ExprAST>> Parser::parseIdentifierExpr() {
+std::optional<std::shared_ptr<ExprAST>> Parser::parseIdentifierExpr() {
 	std::string identifierString = current->lexeme;
 	current++;
 
 	if (current->type != TokenType::LEFT_PAREN) // Simple variable ref.
-		return std::make_unique<VariableExprAST>(identifierString);
+		return std::make_shared<VariableExprAST>(identifierString);
 	current++;
 
 	// Call.
-	std::vector<std::unique_ptr<ExprAST>> Args;
+	std::vector<std::shared_ptr<ExprAST>> Args;
 	// if (current->type != TokenType::RIGHT_PAREN) {
 	// while (true) {
 	// if (auto Arg = parseExpression().value())
@@ -70,10 +70,10 @@ std::optional<std::unique_ptr<ExprAST>> Parser::parseIdentifierExpr() {
 	// Eat the ')'.
 	current++;
 
-	return std::make_unique<CallExprAST>(identifierString, std::move(Args));
+	return std::make_shared<CallExprAST>(identifierString, std::move(Args));
 }
 
-std::optional<std::unique_ptr<ExprAST>> Parser::parsePrimary() {
+std::optional<std::shared_ptr<ExprAST>> Parser::parsePrimary() {
 	switch (current->type) {
 	default:
 		return LogError(
@@ -90,21 +90,21 @@ std::optional<std::unique_ptr<ExprAST>> Parser::parsePrimary() {
 	}
 }
 
-std::optional<std::unique_ptr<ExprAST>> Parser::parseExpression() {
+std::optional<std::shared_ptr<ExprAST>> Parser::parseExpression() {
 	auto lhs = parsePrimary();
 	if (!lhs) return std::nullopt;
 
 	return parseBinOpRHS(0, std::move(lhs));
 }
 
-std::optional<std::unique_ptr<StmtAST>> Parser::parseStatement() {
+std::optional<std::shared_ptr<StmtAST>> Parser::parseStatement() {
 	if (current->type == TokenType::LET) return parseLet();
 	if (current->type == TokenType::RETURN) return parseReturnStmt();
 
 	return parseExprStatement();
 }
 
-std::optional<std::unique_ptr<ExprStmt>> Parser::parseExprStatement() {
+std::optional<std::shared_ptr<ExprStmt>> Parser::parseExprStatement() {
 	auto expr = parseExpression();
 	if (!expr) {
 		LogError("Expected expression");
@@ -117,17 +117,17 @@ std::optional<std::unique_ptr<ExprStmt>> Parser::parseExprStatement() {
 	}
 	current++;
 
-	return std::make_unique<ExprStmt>(std::move(expr.value()));
+	return std::make_shared<ExprStmt>(std::move(expr.value()));
 }
 
-std::optional<std::unique_ptr<BlockAST>> Parser::parseBlock() {
+std::optional<std::shared_ptr<BlockAST>> Parser::parseBlock() {
 	if (current->type != TokenType::LEFT_BRACKET) {
 		LogError("Expected '{' to start block");
 		return std::nullopt;
 	}
 	current++;
 
-	std::vector<std::unique_ptr<StmtAST>> content;
+	std::vector<std::shared_ptr<StmtAST>> content;
 
 	while (true) {
 		auto stmt = parseStatement();
@@ -141,12 +141,12 @@ std::optional<std::unique_ptr<BlockAST>> Parser::parseBlock() {
 	}
 
 	current++;
-	return std::make_unique<BlockAST>(std::move(content));
+	return std::make_shared<BlockAST>(std::move(content));
 }
 
-std::optional<std::unique_ptr<ExprAST>>
+std::optional<std::shared_ptr<ExprAST>>
 Parser::parseBinOpRHS(int precedence,
-					  std::optional<std::unique_ptr<ExprAST>> lhs) {
+					  std::optional<std::shared_ptr<ExprAST>> lhs) {
 	while (true) {
 		int currentPrecedence = getPrecedence(current->type);
 
@@ -163,12 +163,12 @@ Parser::parseBinOpRHS(int precedence,
 			if (!rhs) return std::nullopt;
 		}
 
-		lhs = std::make_unique<BinaryExprAST>(
+		lhs = std::make_shared<BinaryExprAST>(
 			binaryOperator, std::move(lhs.value()), std::move(rhs.value()));
 	}
 }
 
-std::optional<std::unique_ptr<TypeAST>> Parser::parseType() {
+std::optional<std::shared_ptr<TypeAST>> Parser::parseType() {
 	if (current->type != TokenType::IDENTIFIER) {
 		LogError("Unable to parse type");
 		return std::nullopt;
@@ -176,10 +176,10 @@ std::optional<std::unique_ptr<TypeAST>> Parser::parseType() {
 
 	std::string type = current->lexeme;
 	current++;
-	return std::make_unique<TypeAST>(type);
+	return std::make_shared<TypeAST>(type);
 }
 
-std::optional<std::unique_ptr<VarDecl>> Parser::parseLet() {
+std::optional<std::shared_ptr<VarDecl>> Parser::parseLet() {
 	// Move past `let` token, onto either a `mut` token or the var name
 	current++;
 
@@ -200,7 +200,7 @@ std::optional<std::unique_ptr<VarDecl>> Parser::parseLet() {
 	}
 
 	if (current->type == TokenType::SEMICOLON) {
-		return std::make_unique<VarDecl>(name, std::nullopt, mut);
+		return std::make_shared<VarDecl>(name, std::nullopt, mut);
 	}
 
 	if (current->type != TokenType::EQUAL) {
@@ -217,10 +217,10 @@ std::optional<std::unique_ptr<VarDecl>> Parser::parseLet() {
 	}
 	current++;
 
-	return std::make_unique<VarDecl>(name, std::move(value), mut);
+	return std::make_shared<VarDecl>(name, std::move(value), mut);
 }
 
-std::optional<std::unique_ptr<PrototypeAST>> Parser::parsePrototype() {
+std::optional<std::shared_ptr<PrototypeAST>> Parser::parsePrototype() {
 	if (current->type != TokenType::IDENTIFIER) {
 		LogErrorP("Expected function name in prototype");
 		return std::nullopt;
@@ -235,7 +235,7 @@ std::optional<std::unique_ptr<PrototypeAST>> Parser::parsePrototype() {
 	}
 
 	std::vector<std::string> argNames;
-	std::vector<std::unique_ptr<TypeAST>> typeNames;
+	std::vector<std::shared_ptr<TypeAST>> typeNames;
 	current++; // Consume the ( and begin parsing the args
 
 	while (current->type == TokenType::IDENTIFIER) {
@@ -269,12 +269,12 @@ std::optional<std::unique_ptr<PrototypeAST>> Parser::parsePrototype() {
 		return std::nullopt;
 	}
 
-	return std::make_unique<PrototypeAST>(name, std::move(argNames),
+	return std::make_shared<PrototypeAST>(name, std::move(argNames),
 										  std::move(typeNames),
 										  std::move(retType.value()));
 }
 
-std::optional<std::unique_ptr<FunctionAST>> Parser::parseDefinition() {
+std::optional<std::shared_ptr<FunctionAST>> Parser::parseDefinition() {
 	current++;
 	auto proto = parsePrototype();
 	if (!proto) return std::nullopt;
@@ -282,20 +282,20 @@ std::optional<std::unique_ptr<FunctionAST>> Parser::parseDefinition() {
 	auto expr = parseBlock();
 	if (!expr) return std::nullopt;
 
-	return std::make_unique<FunctionAST>(std::move(proto.value()),
+	return std::make_shared<FunctionAST>(std::move(proto.value()),
 										 std::move(expr.value()));
 }
 
-std::optional<std::unique_ptr<ReturnStmt>> Parser::parseReturnStmt() {
+std::optional<std::shared_ptr<ReturnStmt>> Parser::parseReturnStmt() {
 	current++;
 	auto expr = parseExpression();
 	if (!expr) return std::nullopt;
 	current++;
-	return std::make_unique<ReturnStmt>(std::move(expr.value()));
+	return std::make_shared<ReturnStmt>(std::move(expr.value()));
 }
 
 FileAST *Parser::parse() {
-	std::vector<std::unique_ptr<AST>> fileNodes;
+	std::vector<std::shared_ptr<AST>> fileNodes;
 	while (true) {
 		std::cout << (int)current->type << ", " << current->lexeme << std::endl;
 		switch (current->type) {

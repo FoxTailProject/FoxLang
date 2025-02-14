@@ -1,15 +1,17 @@
 #pragma once
 
-#include "../lexer/tokens.hpp"
+#include "../lexer/tokens.h"
 #include <fmt/core.h>
 
 #include <memory>
 #include <string>
+#include <variant>
 #include <vector>
 
 namespace FoxLang {
 class AST {
 public:
+	typedef std::variant<std::monostate, int, float, std::string, bool> Exec;
 	virtual ~AST() = default;
 
 	virtual std::vector<AST *> getChildren() const {
@@ -18,6 +20,8 @@ public:
 	}
 
 	virtual std::string printName() const { return "unimpl"; }
+
+	virtual Exec exec() { return std::monostate{}; }
 };
 
 /// ExprAST - Base class for all expression nodes.
@@ -25,30 +29,9 @@ class ExprAST : public AST {};
 
 class StmtAST : public AST {};
 
-class FileAST : public AST {
-
-	std::string name;
-	std::vector<std::unique_ptr<AST>> expressions;
-
-public:
-	FileAST(const std::string &name,
-			std::vector<std::unique_ptr<AST>> &&expressions)
-		: name(name), expressions(std::move(expressions)) {}
-
-	std::vector<AST *> getChildren() const {
-		std::vector<AST *> rets;
-
-		for (size_t i = 0; i < expressions.size(); i++) {
-			rets.push_back(expressions[i].get());
-		}
-		return rets;
-	}
-
-	std::string printName() const { return fmt::format("FileAST ({})", name); }
-};
-
 /// NumberExprAST - Expression class for numeric literals like "1.0".
 class NumberExprAST : public ExprAST {
+public:
 	std::string Val;
 
 public:
@@ -61,24 +44,26 @@ public:
 
 /// VariableExprAST - Expression class for referencing a variable, like "a".
 class VariableExprAST : public ExprAST {
-	std::string Name;
+public:
+	std::string name;
 
 public:
-	explicit VariableExprAST(const std::string &Name) : Name(Name) {}
+	explicit VariableExprAST(const std::string &name) : name(name) {}
 
 	std::string printName() const {
-		return fmt::format("VariableExprAST ({})", Name);
+		return fmt::format("VariableExprAST ({})", name);
 	}
 };
 
 /// BinaryExprAST - Expression class for a binary operator.
 class BinaryExprAST : public ExprAST {
+public:
 	Token Op;
-	std::unique_ptr<ExprAST> LHS, RHS;
+	std::shared_ptr<ExprAST> LHS, RHS;
 
 public:
-	BinaryExprAST(Token Op, std::unique_ptr<ExprAST> LHS,
-				  std::unique_ptr<ExprAST> RHS)
+	BinaryExprAST(Token Op, std::shared_ptr<ExprAST> LHS,
+				  std::shared_ptr<ExprAST> RHS)
 		: Op(Op), LHS(std::move(LHS)), RHS(std::move(RHS)) {}
 
 	std::vector<AST *> getChildren() const {
@@ -95,12 +80,13 @@ public:
 
 /// CallExprAST - Expression class for function calls.
 class CallExprAST : public ExprAST {
+public:
 	std::string Callee;
-	std::vector<std::unique_ptr<ExprAST>> Args;
+	std::vector<std::shared_ptr<ExprAST>> Args;
 
 public:
 	CallExprAST(const std::string &Callee,
-				std::vector<std::unique_ptr<ExprAST>> Args)
+				std::vector<std::shared_ptr<ExprAST>> Args)
 		: Callee(Callee), Args(std::move(Args)) {}
 
 	std::vector<AST *> getChildren() const {
@@ -118,13 +104,14 @@ public:
 };
 
 class VarDecl : public StmtAST {
+public:
 	std::string name;
-	std::optional<std::unique_ptr<ExprAST>> value;
+	std::optional<std::shared_ptr<ExprAST>> value;
 	bool mut;
 
 public:
 	VarDecl(const std::string &name,
-			std::optional<std::unique_ptr<ExprAST>> value, bool mut)
+			std::optional<std::shared_ptr<ExprAST>> value, bool mut)
 		: name(name), value(std::move(value)), mut(mut) {}
 
 	std::vector<AST *> getChildren() const {
@@ -138,10 +125,11 @@ public:
 };
 
 class ReturnStmt : public StmtAST {
-	std::unique_ptr<ExprAST> value;
+public:
+	std::shared_ptr<ExprAST> value;
 
 public:
-	ReturnStmt(std::unique_ptr<ExprAST> value) : value(std::move(value)) {}
+	ReturnStmt(std::shared_ptr<ExprAST> value) : value(std::move(value)) {}
 
 	std::vector<AST *> getChildren() const {
 		std::vector<AST *> r;
@@ -153,10 +141,11 @@ public:
 };
 
 class ExprStmt : public StmtAST {
-	std::unique_ptr<ExprAST> value;
+public:
+	std::shared_ptr<ExprAST> value;
 
 public:
-	ExprStmt(std::unique_ptr<ExprAST> value) : value(std::move(value)) {}
+	ExprStmt(std::shared_ptr<ExprAST> value) : value(std::move(value)) {}
 
 	std::vector<AST *> getChildren() const {
 		std::vector<AST *> r;
@@ -168,7 +157,7 @@ public:
 };
 
 class TypeAST : public AST {
-
+public:
 	std::string ident;
 
 public:
@@ -178,10 +167,11 @@ public:
 };
 
 class BlockAST : public AST {
-	std::vector<std::unique_ptr<StmtAST>> content;
+public:
+	std::vector<std::shared_ptr<StmtAST>> content;
 
 public:
-	BlockAST(std::vector<std::unique_ptr<StmtAST>> content)
+	BlockAST(std::vector<std::shared_ptr<StmtAST>> content)
 		: content(std::move(content)) {}
 
 	std::vector<AST *> getChildren() const {
@@ -200,54 +190,87 @@ public:
 /// which captures its name, and its argument names (thus implicitly the number
 /// of arguments the function takes).
 class PrototypeAST : public AST {
-
-	std::string Name;
-	std::vector<std::string> Args;
-	std::vector<std::unique_ptr<TypeAST>> Types;
-	std::unique_ptr<TypeAST> retType;
+public:
+	std::string name;
+	std::vector<std::string> args;
+	std::vector<std::shared_ptr<TypeAST>> types;
+	std::shared_ptr<TypeAST> retType;
 
 public:
-	PrototypeAST(const std::string &Name, std::vector<std::string> Args,
-				 std::vector<std::unique_ptr<TypeAST>> Types,
-				 std::unique_ptr<TypeAST> retType)
-		: Name(Name), Args(std::move(Args)), Types(std::move(Types)),
-		  retType(std::move(retType)) {}
+	PrototypeAST(const std::string &name, std::vector<std::string> args,
+				 std::vector<std::shared_ptr<TypeAST>> types,
+				 std::shared_ptr<TypeAST> retType)
+		: name(name), args(args), types(types), retType(std::move(retType)) {}
 
-	const std::string &getName() const { return Name; }
+	const std::string &getName() const { return name; }
 
 	std::vector<AST *> getChildren() const {
 		std::vector<AST *> rets;
 
-		for (size_t i = 0; i < Types.size(); i++) {
-			rets.push_back(Types[i].get());
+		for (size_t i = 0; i < types.size(); i++) {
+			rets.push_back(types[i].get());
 		}
 		rets.push_back(retType.get());
 		return rets;
 	}
 
 	std::string printName() const {
-		return fmt::format("Prototype ({}, {} params)", Name, Args.size());
+		return fmt::format("Prototype ({}, {} params)", name, args.size());
 	}
 };
 
 /// FunctionAST - This class represents a function definition itself.
 class FunctionAST : public AST {
-	std::unique_ptr<PrototypeAST> Proto;
-	std::unique_ptr<BlockAST> Body;
+public:
+	std::shared_ptr<PrototypeAST> proto;
+	std::shared_ptr<BlockAST> body;
 
 public:
-	FunctionAST(std::unique_ptr<PrototypeAST> Proto,
-				std::unique_ptr<BlockAST> Body)
-		: Proto(std::move(Proto)), Body(std::move(Body)) {}
+	FunctionAST(std::shared_ptr<PrototypeAST> proto,
+				std::shared_ptr<BlockAST> body)
+		: proto(proto), body(body) {}
 
 	std::vector<AST *> getChildren() const {
 		std::vector<AST *> r;
-		r.push_back(Proto.get());
-		r.push_back(Body.get());
+		r.push_back(proto.get());
+		r.push_back(body.get());
 		return r;
 	}
 
 	std::string printName() const { return "Function"; }
+};
+
+class FileAST : public AST {
+public:
+	std::string name;
+	std::vector<std::shared_ptr<AST>> expressions;
+
+public:
+	FileAST(const std::string &name,
+			std::vector<std::shared_ptr<AST>> &&expressions)
+		: name(name), expressions(std::move(expressions)) {}
+
+	std::vector<AST *> getChildren() const {
+		std::vector<AST *> rets;
+
+		for (size_t i = 0; i < expressions.size(); i++) {
+			rets.push_back(expressions[i].get());
+		}
+		return rets;
+	}
+
+	std::string printName() const { return fmt::format("FileAST ({})", name); }
+
+	Exec exec() {
+		for (auto i : expressions) {
+			if (dynamic_cast<FunctionAST *>(i.get()) &&
+				((FunctionAST *)i.get())->proto->name == "main") {
+				i->exec();
+				return std::monostate{};
+			}
+		}
+		return std::monostate{};
+	}
 };
 
 /// GetTokPrecedence - Get the precedence of the pending binary operator token.
@@ -268,12 +291,12 @@ inline int getPrecedence(TokenType token) {
 }
 
 /// LogError* - These are little helper functions for error handling.
-inline std::unique_ptr<ExprAST> LogError(const char *Str) {
+inline std::shared_ptr<ExprAST> LogError(const char *Str) {
 	fprintf(stderr, "Error: %s\n", Str);
 	return nullptr;
 }
 
-inline std::unique_ptr<PrototypeAST> LogErrorP(const char *Str) {
+inline std::shared_ptr<PrototypeAST> LogErrorP(const char *Str) {
 	LogError(Str);
 	return nullptr;
 }

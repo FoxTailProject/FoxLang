@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "tokens.hpp"
+#include "tokens.h"
 
 namespace FoxLang {
 class Tokenizer {

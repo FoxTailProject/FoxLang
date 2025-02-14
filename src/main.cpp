@@ -4,8 +4,8 @@
 
 #include "../vendor/argparse/argparse.hpp"
 
-#include "ast/parser.hpp"
-#include "lexer/tokenizer.hpp"
+#include "ast/parser.h"
+#include "lexer/tokenizer.h"
 
 void printTree(const std::string &prefix, const FoxLang::AST *node,
 			   bool isLeft);

@@ -1,4 +1,4 @@
-#include "tokenizer.hpp"
+#include "tokenizer.h"
 
 namespace FoxLang {
 Tokenizer::Tokenizer(std::string *source) : source(source), tokens() {}
