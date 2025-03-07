@@ -1,9 +1,12 @@
 #include <fstream>
 #include <iostream>
+#include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/IRBuilder.h>
 #include <string>
 
 #include "../vendor/argparse/argparse.hpp"
 
+#include "ast/nodes.h"
 #include "ast/parser.h"
 #include "lexer/tokenizer.h"
 
@@ -49,6 +52,7 @@ auto main(int argc, char *argv[]) -> int {
 	// FoxLang::ASTGenerator astGenerator(tokens);
 	// auto fileTree = astGenerator.GenerateFileTree();
 
+	// FoxLang::AST::llvm_module = std::make_unique<llvm::Module>();
 	FoxLang::Parser ast(tokens);
 	auto tree = ast.parse();
 	printTree(tree);

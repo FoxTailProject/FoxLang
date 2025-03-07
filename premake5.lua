@@ -8,14 +8,8 @@ project "FoxLang"
 	cppdialect "C++20"
 	toolset "clang"
 	targetdir "bin/%{cfg.system}-%{cfg.buildcfg}-%{cfg.architecture}"
-
-	--[[ if _OPTIONS["gcc"] then
-		buildoptions { "-std=c++20" }
-	elseif _OPTIONS["clang"] then
-		buildoptions { "-std=c++20" }
-	elseif _OPTIONS["msvc"] then
-		buildoptions { "/std:c++20" }
-	end ]]--
+	-- libdirs { os.findlib("libLLVM") }
+	links { "LLVM" }
 
 	files {
 	  "src/**.cpp",
@@ -26,7 +20,8 @@ project "FoxLang"
 
 	includedirs {
 	  "src/",
-	  "vendor/"
+	  "vendor/",
+	  "/usr/include/llvm/"
 	}
 
 	filter "configurations:Debug"

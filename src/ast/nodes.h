@@ -1,7 +1,13 @@
 #pragma once
 
 #include "../lexer/tokens.h"
+#include <cstdlib>
 #include <fmt/core.h>
+#include <llvm/ADT/APInt.h>
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Value.h>
 
 #include <memory>
 #include <string>
@@ -14,14 +20,17 @@ public:
 	typedef std::variant<std::monostate, int, float, std::string, bool> Exec;
 	virtual ~AST() = default;
 
-	virtual std::vector<AST *> getChildren() const {
-		std::vector<AST *> r;
-		return r;
-	}
+	virtual std::vector<AST *> getChildren() const;
 
-	virtual std::string printName() const { return "unimpl"; }
+	virtual std::string printName() const;
 
-	virtual Exec exec() { return std::monostate{}; }
+	virtual Exec exec();
+
+	virtual llvm::Value *compile();
+
+	static std::unique_ptr<llvm::LLVMContext> context;
+	static std::unique_ptr<llvm::IRBuilder<>> builder;
+	static std::unique_ptr<llvm::Module> llvm_module;
 };
 
 /// ExprAST - Base class for all expression nodes.
@@ -32,14 +41,14 @@ class StmtAST : public AST {};
 /// NumberExprAST - Expression class for numeric literals like "1.0".
 class NumberExprAST : public ExprAST {
 public:
-	std::string Val;
+	std::string num;
 
 public:
-	explicit NumberExprAST(const std::string &Val) : Val(Val) {}
+	explicit NumberExprAST(const std::string &num) : num(num) {}
 
-	std::string printName() const {
-		return fmt::format("NumberExprAST ({})", Val);
-	}
+	std::string printName() const override;
+
+	llvm::Value *compile() override;
 };
 
 /// VariableExprAST - Expression class for referencing a variable, like "a".
@@ -50,9 +59,7 @@ public:
 public:
 	explicit VariableExprAST(const std::string &name) : name(name) {}
 
-	std::string printName() const {
-		return fmt::format("VariableExprAST ({})", name);
-	}
+	std::string printName() const override;
 };
 
 /// BinaryExprAST - Expression class for a binary operator.
@@ -66,16 +73,9 @@ public:
 				  std::shared_ptr<ExprAST> RHS)
 		: Op(Op), LHS(std::move(LHS)), RHS(std::move(RHS)) {}
 
-	std::vector<AST *> getChildren() const {
-		std::vector<AST *> r;
-		r.push_back(LHS.get());
-		r.push_back(RHS.get());
-		return r;
-	}
+	std::vector<AST *> getChildren() const override;
 
-	std::string printName() const {
-		return fmt::format("BinaryExprAST ({})", Op.lexeme);
-	}
+	std::string printName() const override;
 };
 
 /// CallExprAST - Expression class for function calls.
@@ -89,18 +89,9 @@ public:
 				std::vector<std::shared_ptr<ExprAST>> Args)
 		: Callee(Callee), Args(std::move(Args)) {}
 
-	std::vector<AST *> getChildren() const {
-		std::vector<AST *> rets;
+	std::vector<AST *> getChildren() const override;
 
-		for (size_t i = 0; i < Args.size(); i++) {
-			rets.push_back(Args[i].get());
-		}
-		return rets;
-	}
-
-	std::string printName() const {
-		return fmt::format("CallExpr ({})", Callee);
-	}
+	std::string printName() const override;
 };
 
 class VarDecl : public StmtAST {
@@ -114,14 +105,9 @@ public:
 			std::optional<std::shared_ptr<ExprAST>> value, bool mut)
 		: name(name), value(std::move(value)), mut(mut) {}
 
-	std::vector<AST *> getChildren() const {
-		std::vector<AST *> rets;
+	std::vector<AST *> getChildren() const override;
 
-		if (value) rets.push_back(value.value().get());
-		return rets;
-	}
-
-	std::string printName() const { return fmt::format("VarDecl ({})", name); }
+	std::string printName() const override;
 };
 
 class ReturnStmt : public StmtAST {
@@ -131,13 +117,9 @@ public:
 public:
 	ReturnStmt(std::shared_ptr<ExprAST> value) : value(std::move(value)) {}
 
-	std::vector<AST *> getChildren() const {
-		std::vector<AST *> r;
-		r.push_back(value.get());
-		return r;
-	}
+	std::vector<AST *> getChildren() const override;
 
-	std::string printName() const { return "Return"; }
+	std::string printName() const override;
 };
 
 class ExprStmt : public StmtAST {
@@ -147,13 +129,9 @@ public:
 public:
 	ExprStmt(std::shared_ptr<ExprAST> value) : value(std::move(value)) {}
 
-	std::vector<AST *> getChildren() const {
-		std::vector<AST *> r;
-		r.push_back(value.get());
-		return r;
-	}
+	std::vector<AST *> getChildren() const override;
 
-	std::string printName() const { return fmt::format("ExprStmt"); }
+	std::string printName() const override;
 };
 
 class TypeAST : public AST {
@@ -163,7 +141,7 @@ public:
 public:
 	explicit TypeAST(const std::string &ident) : ident(ident) {}
 
-	std::string printName() const { return fmt::format("TypeAST ({})", ident); }
+	std::string printName() const override;
 };
 
 class BlockAST : public AST {
@@ -174,16 +152,9 @@ public:
 	BlockAST(std::vector<std::shared_ptr<StmtAST>> content)
 		: content(std::move(content)) {}
 
-	std::vector<AST *> getChildren() const {
-		std::vector<AST *> rets;
+	std::vector<AST *> getChildren() const override;
 
-		for (size_t i = 0; i < content.size(); i++) {
-			rets.push_back(content[i].get());
-		}
-		return rets;
-	}
-
-	std::string printName() const { return "BlockAST"; }
+	std::string printName() const override;
 };
 
 /// PrototypeAST - This class represents the "prototype" for a function,
@@ -204,19 +175,9 @@ public:
 
 	const std::string &getName() const { return name; }
 
-	std::vector<AST *> getChildren() const {
-		std::vector<AST *> rets;
+	std::vector<AST *> getChildren() const override;
 
-		for (size_t i = 0; i < types.size(); i++) {
-			rets.push_back(types[i].get());
-		}
-		rets.push_back(retType.get());
-		return rets;
-	}
-
-	std::string printName() const {
-		return fmt::format("Prototype ({}, {} params)", name, args.size());
-	}
+	std::string printName() const override;
 };
 
 /// FunctionAST - This class represents a function definition itself.
@@ -230,14 +191,9 @@ public:
 				std::shared_ptr<BlockAST> body)
 		: proto(proto), body(body) {}
 
-	std::vector<AST *> getChildren() const {
-		std::vector<AST *> r;
-		r.push_back(proto.get());
-		r.push_back(body.get());
-		return r;
-	}
+	std::vector<AST *> getChildren() const override;
 
-	std::string printName() const { return "Function"; }
+	std::string printName() const override;
 };
 
 class FileAST : public AST {
@@ -250,16 +206,9 @@ public:
 			std::vector<std::shared_ptr<AST>> &&expressions)
 		: name(name), expressions(std::move(expressions)) {}
 
-	std::vector<AST *> getChildren() const {
-		std::vector<AST *> rets;
+	std::vector<AST *> getChildren() const override;
 
-		for (size_t i = 0; i < expressions.size(); i++) {
-			rets.push_back(expressions[i].get());
-		}
-		return rets;
-	}
-
-	std::string printName() const { return fmt::format("FileAST ({})", name); }
+	std::string printName() const override;
 
 	Exec exec() {
 		for (auto i : expressions) {
