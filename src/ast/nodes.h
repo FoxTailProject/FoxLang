@@ -7,6 +7,7 @@
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Module.h>
 #include <llvm/IR/Value.h>
 
 #include <memory>
@@ -76,6 +77,7 @@ public:
 	std::vector<AST *> getChildren() const override;
 
 	std::string printName() const override;
+	llvm::Value *compile() override;
 };
 
 /// CallExprAST - Expression class for function calls.
@@ -210,7 +212,7 @@ public:
 
 	std::string printName() const override;
 
-	Exec exec() {
+	Exec exec() override {
 		for (auto i : expressions) {
 			if (dynamic_cast<FunctionAST *>(i.get()) &&
 				((FunctionAST *)i.get())->proto->name == "main") {
