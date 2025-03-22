@@ -1,5 +1,4 @@
 #include "nodes.h"
-#include <ios>
 #include <iostream>
 
 namespace FoxLang {
@@ -9,6 +8,8 @@ std::unique_ptr<llvm::IRBuilder<>> AST::builder =
 	std::make_unique<llvm::IRBuilder<>>(*AST::context);
 std::unique_ptr<llvm::Module> AST::llvm_module =
 	std::make_unique<llvm::Module>("FoxLang", *AST::context);
+std::map<std::string, llvm::Value *> AST::named_values =
+	std::map<std::string, llvm::Value *>();
 
 llvm::Value *AST::compile() { return nullptr; }
 
@@ -61,7 +62,8 @@ llvm::Value *BinaryExprAST::compile() {
 	case TokenType::GREATER:
 		return builder->CreateICmpUGT(left, right);
 	default:
-		std::cout << "Unimplemented binary operation";
+		std::cout << "Unimplemented binary operation '" << Op.lexeme << "'"
+				  << std::endl;
 		return nullptr;
 	}
 }

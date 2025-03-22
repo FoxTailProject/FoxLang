@@ -56,6 +56,7 @@ auto main(int argc, char *argv[]) -> int {
 	FoxLang::Parser ast(tokens);
 	auto tree = ast.parse();
 	printTree(tree);
+	tree->compile();
 
 	return 0;
 }
