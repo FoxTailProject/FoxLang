@@ -1,9 +1,14 @@
 #pragma once
 
-namespace FoxLangIR {
+#include <stack>
+#include <vector>
+
+namespace FoxLang::IR {
 class Builder {
 private:
-	Namespace currentNamespace;
+	std::stack<Namespace *> nsStack;
+	Namespace *currentNamespace;
+	std::vector<Namespace> nses;
 	std::vector<Instruction> intstructions;
-}
-} // namespace FoxLangIR
+};
+} // namespace FoxLang::IR
