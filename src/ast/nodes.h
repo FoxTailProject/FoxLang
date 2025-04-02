@@ -115,6 +115,9 @@ public:
 	llvm::Value *compile() override {
 		llvm::Function *callee = llvm_module->getFunction(Callee);
 		if (!callee) {
+			// TODO: Generate a new function prototype
+			// If it doesn't have a body at the end of compilation
+			// then it throws an error
 			std::cout << "Could not find function '" << Callee << "'"
 					  << std::endl;
 			return nullptr;
@@ -157,7 +160,7 @@ public:
 	llvm::Value *compile() override {
 		if (!mut) {
 			if (!value) return nullptr;
-			value.value()->compile();
+			named_values[name] = value.value()->compile();
 			return nullptr;
 		}
 
