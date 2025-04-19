@@ -4,6 +4,7 @@ namespace FoxLang::IR {
 enum class ContainerType;
 
 class Container {
+public:
 	~Container() = default;
 	ContainerType type;
 	void *stuff;
