@@ -132,12 +132,12 @@ std::optional<std::shared_ptr<BlockAST>> Parser::parseBlock() {
 
 	while (current->type != TokenType::RIGHT_BRACKET) {
 		auto stmt = parseStatement();
-		if (!stmt) {
-			LogError("Expected expression in block", "E0104");
-			return std::nullopt;
-		}
+		// if (!stmt) {
+		// LogError("Expected expression in block", "E0104");
+		// return std::nullopt;
+		// }
 
-		content.push_back(std::move(stmt.value()));
+		if (stmt) content.push_back(std::move(stmt.value()));
 	}
 
 	current++;

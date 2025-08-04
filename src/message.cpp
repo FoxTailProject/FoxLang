@@ -22,10 +22,11 @@ auto strip_whitespace(std::string str) {
 
 void Message::print() {
 	if (level == Severity::Error)
-		fmt::print(fmt::emphasis::bold | fg(fmt::color::crimson), "error");
+		fmt::print(fmt::emphasis::bold | fg(fmt::color::crimson), "error {}",
+				   code);
 	else
 		fmt::print(fmt::emphasis::bold | fg(fmt::color::light_yellow),
-				   "warning");
+				   "warning {}", code);
 	fmt::print(fmt::emphasis::bold, ": {}\n", message);
 	fmt::print(fg(fmt::color::light_green), " --> ");
 	fmt::print("{}:{}:{}\n", span.fp, span.line, span.column);
