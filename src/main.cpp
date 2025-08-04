@@ -1,3 +1,4 @@
+#include <deque>
 #include <fstream>
 #include <iostream>
 #include <llvm/IR/BasicBlock.h>
@@ -6,18 +7,23 @@
 
 #include "../vendor/argparse/argparse.hpp"
 
-#include "ast/nodes.h"
-#include "ast/parser.h"
-#include "lexer/tokenizer.h"
+#include "ast/nodes.hpp"
+#include "ast/parser.hpp"
+#include "ir/generator.hpp"
+#include "lexer/lexer.hpp"
+
+#include "message.hpp"
 
 void printTree(const std::string &prefix, const FoxLang::AST *node,
 			   bool isLeft);
 void printTree(const FoxLang::AST *node);
+void handle_messages(std::deque<FoxLang::Message> &messages);
 
 auto main(int argc, char *argv[]) -> int {
 	argparse::ArgumentParser program("fox", "0.0.1 epsilon");
 
 	argparse::ArgumentParser compile_command("compile");
+	compile_command.add_argument("--print-ast").flag();
 	compile_command.add_argument("-o", "--output").nargs(1);
 	compile_command.add_argument("files").required().nargs(1);
 
@@ -39,26 +45,41 @@ auto main(int argc, char *argv[]) -> int {
 		std::exit(1);
 	}
 
+	std::deque<FoxLang::Message> messages;
+
 	std::string contents((std::istreambuf_iterator<char>(file)),
 						 (std::istreambuf_iterator<char>()));
 
-	// std::string line;
-	// while (std::getline(file, line)) {
-	//   std::cout << line << std::endl;
-	// }
-	FoxLang::Tokenizer tokenizer(&contents);
-	std::vector<FoxLang::Token> *tokens = tokenizer.Tokenize();
+	FoxLang::Lexer lexer(&contents, file_name, messages);
+	std::vector<FoxLang::Token> *tokens = lexer.Lex();
 
-	// FoxLang::ASTGenerator astGenerator(tokens);
-	// auto fileTree = astGenerator.GenerateFileTree();
-
-	// FoxLang::AST::llvm_module = std::make_unique<llvm::Module>();
-	FoxLang::Parser ast(tokens);
+	FoxLang::Parser ast(tokens, messages);
 	auto tree = ast.parse();
-	printTree(tree);
-	tree->compile();
+
+	bool erred = false;
+	for (auto i : messages) {
+		if (i.level == FoxLang::Severity::Error) {
+			erred = true;
+			break;
+		}
+	}
+
+	handle_messages(messages);
+	if (erred) return 1;
+
+	if (compile_command["print-ast"] == true) printTree(tree);
+
+	FoxLang::IR::Generator ir;
+	tree->accept(ir);
 
 	return 0;
+}
+
+void handle_messages(std::deque<FoxLang::Message> &messages) {
+	while (!messages.empty()) {
+		messages.front().print();
+		messages.pop_front();
+	}
 }
 
 void printTree(const std::string &prefix, const FoxLang::AST *node,

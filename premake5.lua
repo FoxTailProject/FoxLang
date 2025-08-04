@@ -1,9 +1,9 @@
 workspace "FoxLang"
-    architecture "x86_64"
-    configurations { "Debug", "", "Release" }
+	architecture "x86_64"
+	configurations { "Debug", "", "Release" }
 
 project "FoxLang"
-    kind "ConsoleApp"
+	kind "ConsoleApp"
 	language "C++"
 	cppdialect "C++20"
 	toolset "clang"
@@ -11,9 +11,13 @@ project "FoxLang"
 	-- libdirs { os.findlib("libLLVM") }
 	links { "LLVM" }
 
+	postbuildcommands {
+	  "doxygen > /dev/null &",
+	}
+
 	files {
 	  "src/**.cpp",
-      "vendor/**.cpp",
+	  "vendor/**.cpp",
 	  "vendor/**.c",
 	  "vendor/**.cc",
 	}
@@ -25,12 +29,12 @@ project "FoxLang"
 	}
 
 	filter "configurations:Debug"
-	    defines { "FOX_DEBUG" }
+		defines { "FOX_DEBUG" }
 		symbols "On"
         warnings "Extra"
 
 	filter "configurations:Release"
-	    defines { "FOX_RELEASE" }
+		defines { "FOX_RELEASE" }
 		optimize "On"
         warnings "Extra"
 

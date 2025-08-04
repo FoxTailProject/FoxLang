@@ -1,11 +1,8 @@
-#include "parser.h"
+#include "parser.hpp"
 #include <fmt/format.h>
 #include <iostream>
 
 namespace FoxLang {
-Parser::Parser(std::vector<Token> *tokens)
-	: tokens(tokens), current(tokens->begin()) {}
-
 std::optional<std::shared_ptr<ExprAST>> Parser::parseNumberExpr() {
 	auto ret = std::make_shared<NumberExprAST>(current->lexeme);
 	current++;
@@ -19,9 +16,7 @@ std::optional<std::shared_ptr<ExprAST>> Parser::parseParenExpr() {
 	if (!expression) return std::nullopt;
 
 	if (current->type != TokenType::RIGHT_PAREN) {
-		LogError(
-			fmt::format("Expected right parenthesis on line {}", current->line)
-				.c_str());
+		LogError("Expected closing parenthesis", "E0003");
 		return std::nullopt;
 	}
 
@@ -59,7 +54,7 @@ std::optional<std::shared_ptr<ExprAST>> Parser::parseIdentifierExpr() {
 	while (current->type != TokenType::RIGHT_PAREN) {
 		auto arg = parseExpression();
 		if (!arg) {
-			LogError("unable to parse expression");
+			LogError("unable to parse expression", "E0100");
 			return std::nullopt;
 		}
 		Args.push_back(std::move(arg.value()));
@@ -76,11 +71,11 @@ std::optional<std::shared_ptr<ExprAST>> Parser::parseIdentifierExpr() {
 std::optional<std::shared_ptr<ExprAST>> Parser::parsePrimary() {
 	switch (current->type) {
 	default:
-		return LogError(
-			fmt::format(
-				"unknown token {} when expecting an expression on line {}",
-				current->lexeme, current->line)
-				.c_str());
+		LogError(
+			fmt::format("unknown token {} when trying to parse an expression",
+						current->lexeme),
+			"E0102");
+		return std::nullopt;
 	case TokenType::IDENTIFIER:
 		return parseIdentifierExpr();
 	case TokenType::NUMBER:
@@ -98,21 +93,27 @@ std::optional<std::shared_ptr<ExprAST>> Parser::parseExpression() {
 }
 
 std::optional<std::shared_ptr<StmtAST>> Parser::parseStatement() {
-	if (current->type == TokenType::LET) return parseLet();
-	if (current->type == TokenType::RETURN) return parseReturnStmt();
-
-	return parseExprStatement();
+	switch (current->type) {
+	case TokenType::LET:
+		return parseLet();
+	case TokenType::RETURN:
+		return parseReturnStmt();
+	case TokenType::IF:
+		return parseIfStmt();
+	default:
+		return parseExprStatement();
+	}
 }
 
 std::optional<std::shared_ptr<ExprStmt>> Parser::parseExprStatement() {
 	auto expr = parseExpression();
 	if (!expr) {
-		LogError("Expected expression");
+		LogError("Expected expression", "E0103");
 		return std::nullopt;
 	}
 
 	if (current->type != TokenType::SEMICOLON) {
-		LogError("expected ; after expression");
+		LogError("expected ; after expression", "E0005");
 		return std::nullopt;
 	}
 	current++;
@@ -122,26 +123,39 @@ std::optional<std::shared_ptr<ExprStmt>> Parser::parseExprStatement() {
 
 std::optional<std::shared_ptr<BlockAST>> Parser::parseBlock() {
 	if (current->type != TokenType::LEFT_BRACKET) {
-		LogError("Expected '{' to start block");
+		LogError("Expected '{' to start block", "E0006");
 		return std::nullopt;
 	}
 	current++;
 
 	std::vector<std::shared_ptr<StmtAST>> content;
 
-	while (true) {
+	while (current->type != TokenType::RIGHT_BRACKET) {
 		auto stmt = parseStatement();
 		if (!stmt) {
-			LogError("Expected expression in block");
+			LogError("Expected expression in block", "E0104");
 			return std::nullopt;
 		}
 
 		content.push_back(std::move(stmt.value()));
-		if (current->type == TokenType::RIGHT_BRACKET) break;
 	}
 
 	current++;
-	return std::make_shared<BlockAST>(std::move(content));
+	return std::make_shared<BlockAST>(std::move(content), false);
+}
+
+std::optional<std::shared_ptr<BlockAST>> Parser::parseBklessBlock() {
+	if (current->type == TokenType::LEFT_BRACKET) return parseBlock();
+
+	auto stmt = parseStatement();
+	if (!stmt) {
+		LogError("Unable to parse bracketless block, unable to parse statement",
+				 "E0105");
+		return std::nullopt;
+	}
+
+	return std::make_shared<BlockAST>(
+		std::vector<std::shared_ptr<StmtAST>>{stmt.value()}, true);
 }
 
 std::optional<std::shared_ptr<ExprAST>>
@@ -170,7 +184,7 @@ Parser::parseBinOpRHS(int precedence,
 
 std::optional<std::shared_ptr<TypeAST>> Parser::parseType() {
 	if (current->type != TokenType::IDENTIFIER) {
-		LogError("Unable to parse type");
+		LogError("Unable to parse type", "E0200");
 		return std::nullopt;
 	}
 
@@ -195,7 +209,8 @@ std::optional<std::shared_ptr<VarDecl>> Parser::parseLet() {
 
 	if (!type) {
 		LogError("Type inference is not yet implemented. If you wrote Haskell, "
-				 "send me an email");
+				 "send me an email",
+				 "ESMUT");
 		return std::nullopt;
 	}
 
@@ -204,15 +219,15 @@ std::optional<std::shared_ptr<VarDecl>> Parser::parseLet() {
 	}
 
 	if (current->type != TokenType::EQUAL) {
-		LogError("You need an equal sign zidiot");
+		LogError("You need an equal sign zidiot", "E0006");
 		return std::nullopt;
 	}
 	current++; // move past = onto the expression
 
 	auto value = parseExpression();
 	if (!value) {
-		LogError("You need an expression after the =");
-		LogError("Im done with errors rn");
+		LogError("You need an expression after the =", "E0007");
+		LogError("Im done with errors rn", "E0007");
 		return std::nullopt;
 	}
 	current++;
@@ -220,9 +235,39 @@ std::optional<std::shared_ptr<VarDecl>> Parser::parseLet() {
 	return std::make_shared<VarDecl>(name, std::move(value), mut);
 }
 
+std::optional<std::shared_ptr<IfStmt>> Parser::parseIfStmt() {
+	current++; // move past if statement
+
+	auto cond = parseExpression();
+	if (!cond) {
+		LogError("Need a condition for an if statement", "E0106");
+		return std::nullopt;
+	}
+
+	auto block = parseBklessBlock();
+	if (!block) {
+		LogError("Need a block for an if statement", "E0107");
+		return std::nullopt;
+	}
+
+	std::optional<std::shared_ptr<BlockAST>> else_ = std::nullopt;
+	if (current->type == TokenType::ELSE) {
+		current++;					// Move past else
+		else_ = parseBklessBlock(); // If else chains will have the if stored
+									// inside the else of the previous if
+		if (!else_) {
+			LogError("Unable to parse block inside else", "E0108");
+			return std::nullopt;
+		}
+	}
+
+	return std::make_shared<IfStmt>(std::move(cond.value()),
+									std::move(block.value()), std::move(else_));
+}
+
 std::optional<std::shared_ptr<PrototypeAST>> Parser::parsePrototype() {
 	if (current->type != TokenType::IDENTIFIER) {
-		LogErrorP("Expected function name in prototype");
+		LogError("Expected function name in prototype", "E0109");
 		return std::nullopt;
 	}
 
@@ -230,7 +275,7 @@ std::optional<std::shared_ptr<PrototypeAST>> Parser::parsePrototype() {
 	current++;
 
 	if (current->type != TokenType::LEFT_PAREN) {
-		LogErrorP("Expected '(' in function prototype");
+		LogError("Expected '(' in function prototype", "E0008");
 		return std::nullopt;
 	}
 
@@ -244,7 +289,7 @@ std::optional<std::shared_ptr<PrototypeAST>> Parser::parsePrototype() {
 
 		auto type = parseType(); // Consumes IDENTIFIERs for the type
 		if (!type) {
-			LogErrorP("Unable to parse type");
+			LogError("Unable to parse type", "E0110");
 			return std::nullopt;
 		}
 
@@ -258,14 +303,14 @@ std::optional<std::shared_ptr<PrototypeAST>> Parser::parsePrototype() {
 	}
 
 	if (current->type != TokenType::RIGHT_PAREN) {
-		LogErrorP("Expected ')' in function prototype");
+		LogError("Expected ')' in function prototype", "E0009");
 		return std::nullopt;
 	}
 
 	current++;
 	auto retType = parseType();
 	if (!retType) {
-		LogError("Unable to parse return type of function");
+		LogError("Unable to parse return type of function", "E0111");
 		return std::nullopt;
 	}
 
@@ -312,11 +357,39 @@ FileAST *Parser::parse() {
 			// static_cast<ExprAST *>(definition.value().release()));
 		} break;
 		default: {
-			LogError(fmt::format("Unexpected character '{}'", current->lexeme)
-						 .c_str());
+			LogError(fmt::format("Unexpected character '{}'", current->lexeme),
+					 "E0010");
 			current++;
 		} break;
 		}
 	}
+}
+
+void Parser::LogError(std::string message, std::string code) {
+	messages.push_back(Message{
+		.message = message,
+		.level = Severity::Error,
+		.code = code,
+		.span = Location{
+			.fp = current->fp,
+			.line = current->line,
+			.column = current->column - current->lexeme.length(),
+			.char_start = current->char_start - current->lexeme.length(),
+			.len = current->lexeme.length(),
+		}});
+}
+
+void Parser::LogWarning(std::string message, std::string code) {
+	messages.push_back(Message{
+		.message = message,
+		.level = Severity::Warning,
+		.code = code,
+		.span = Location{
+			.fp = current->fp,
+			.line = current->line,
+			.column = current->column - current->lexeme.length(),
+			.char_start = current->char_start - current->lexeme.length(),
+			.len = current->lexeme.length(),
+		}});
 }
 } // namespace FoxLang

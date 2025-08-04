@@ -1,18 +1,9 @@
-#include "nodes.h"
+#include "nodes.hpp"
+#include "../ir/generator.hpp"
+
 #include <iostream>
 
 namespace FoxLang {
-std::unique_ptr<llvm::LLVMContext> AST::context =
-	std::make_unique<llvm::LLVMContext>();
-std::unique_ptr<llvm::IRBuilder<>> AST::builder =
-	std::make_unique<llvm::IRBuilder<>>(*AST::context);
-std::unique_ptr<llvm::Module> AST::llvm_module =
-	std::make_unique<llvm::Module>("FoxLang", *AST::context);
-std::map<std::string, llvm::Value *> AST::named_values =
-	std::map<std::string, llvm::Value *>();
-
-llvm::Value *AST::compile() { return nullptr; }
-
 std::string AST::printName() const { return "unimpl"; }
 
 AST::Exec AST::exec() { return std::monostate{}; }
@@ -20,10 +11,6 @@ AST::Exec AST::exec() { return std::monostate{}; }
 std::vector<AST *> AST::getChildren() const {
 	std::vector<AST *> r;
 	return r;
-}
-
-llvm::Value *NumberExprAST::compile() {
-	return llvm::ConstantInt::get(*context, llvm::APInt(32, atoi(num.c_str())));
 }
 
 std::string NumberExprAST::printName() const {
@@ -43,29 +30,6 @@ std::vector<AST *> BinaryExprAST::getChildren() const {
 
 std::string BinaryExprAST::printName() const {
 	return fmt::format("BinaryExprAST ({})", Op.lexeme);
-}
-
-llvm::Value *BinaryExprAST::compile() {
-	auto left = LHS->compile();
-	auto right = RHS->compile();
-	if (!left || !right) return nullptr;
-
-	switch (Op.type) {
-	case TokenType::PLUS:
-		return builder->CreateAdd(left, right);
-	case TokenType::MINUS:
-		return builder->CreateSub(left, right);
-	case TokenType::STAR:
-		return builder->CreateMul(left, right);
-	case TokenType::LESS:
-		return builder->CreateICmpULT(left, right);
-	case TokenType::GREATER:
-		return builder->CreateICmpUGT(left, right);
-	default:
-		std::cout << "Unimplemented binary operation '" << Op.lexeme << "'"
-				  << std::endl;
-		return nullptr;
-	}
 }
 
 std::vector<AST *> CallExprAST::getChildren() const {
@@ -158,4 +122,28 @@ std::vector<AST *> FileAST::getChildren() const {
 	}
 	return rets;
 }
+
+std::string IfStmt::printName() const { return "IfStmt"; }
+
+std::vector<AST *> IfStmt::getChildren() const {
+	std::vector<AST *> vec;
+	vec.push_back(condition.get());
+	vec.push_back(block.get());
+	if (else_) vec.push_back(else_.value().get());
+	return vec;
+}
+
+llvm::Value *BlockAST::accept(ASTVisitor &v) { return v.visit(*this); }
+llvm::Value *BinaryExprAST::accept(ASTVisitor &v) { return v.visit(*this); }
+llvm::Value *CallExprAST::accept(ASTVisitor &v) { return v.visit(*this); }
+llvm::Value *NumberExprAST::accept(ASTVisitor &v) { return v.visit(*this); }
+llvm::Value *VariableExprAST::accept(ASTVisitor &v) { return v.visit(*this); }
+llvm::Value *FileAST::accept(ASTVisitor &v) { return v.visit(*this); }
+llvm::Value *FunctionAST::accept(ASTVisitor &v) { return v.visit(*this); }
+llvm::Value *PrototypeAST::accept(ASTVisitor &v) { return v.visit(*this); }
+llvm::Value *ExprStmt::accept(ASTVisitor &v) { return v.visit(*this); }
+llvm::Value *ReturnStmt::accept(ASTVisitor &v) { return v.visit(*this); }
+llvm::Value *VarDecl::accept(ASTVisitor &v) { return v.visit(*this); }
+llvm::Value *TypeAST::accept(ASTVisitor &v) { return v.visit(*this); }
+llvm::Value *IfStmt::accept(ASTVisitor &v) { return v.visit(*this); }
 } // namespace FoxLang

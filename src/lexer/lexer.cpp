@@ -1,25 +1,20 @@
-#include "tokenizer.h"
+#include "lexer.hpp"
 
 namespace FoxLang {
-Tokenizer::Tokenizer(std::string *source) : source(source), tokens() {}
-
-std::vector<Token> *Tokenizer::Tokenize() {
+std::vector<Token> *Lexer::Lex() {
 	while (!AtEnd()) {
-		// std::cout << "1 "<< current << std::endl;
 		start = current;
 		currentToken();
-		// std::cout << "2 "<< current << std::endl;
-		// std::cout << current << ", " << source->length() <<
-		// std::endl;
 	}
 
-	tokens.push_back(Token(TokenType::EOF_TOKEN, "", line));
+	tokens.push_back(
+		Token(TokenType::EOF_TOKEN, "", line, column, current, fp));
 	return &tokens;
 }
 
-inline bool Tokenizer::AtEnd() { return current >= source->length(); }
+inline bool Lexer::AtEnd() { return current >= source->length(); }
 
-void Tokenizer::currentToken() {
+void Lexer::currentToken() {
 	char c = advance();
 	switch (c) {
 	case '(':
@@ -106,6 +101,7 @@ void Tokenizer::currentToken() {
 	} break;
 	case '\n':
 		line++;
+		column = 1;
 		break;
 	case '"':
 		string();
@@ -116,21 +112,30 @@ void Tokenizer::currentToken() {
 		else if (isAlpha(c))
 			identifier();
 		else
-			std::cerr << "Unexpected character on line " << line << ": " << c
-					  << std::endl;
+			messages.push_back(
+				Message{.message = fmt::format("Unexpected character {}", c),
+						.level = Severity::Error,
+						.code = "E0001",
+						.span = Location{
+							.fp = fp,
+							.line = line,
+							.column = column,
+							.char_start = current,
+							.len = 1,
+						}});
 	} break;
 	}
 }
 
-bool Tokenizer::isDigit(char c) { return c >= '0' && c <= '9'; }
+bool Lexer::isDigit(char c) { return c >= '0' && c <= '9'; }
 
-bool Tokenizer::isAlpha(char c) {
+bool Lexer::isAlpha(char c) {
 	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
 }
 
-bool Tokenizer::isAlphaNumeric(char c) { return isAlpha(c) || isDigit(c); }
+bool Lexer::isAlphaNumeric(char c) { return isAlpha(c) || isDigit(c); }
 
-bool Tokenizer::isAlphaNumericUnicode(char c) {
+bool Lexer::isAlphaNumericUnicode(char c) {
 	if ((c & 0b10000000) == 0) return isAlpha(c) || isDigit(c);
 
 	// first bytes to specify a multi-length char
@@ -142,7 +147,7 @@ bool Tokenizer::isAlphaNumericUnicode(char c) {
 	return isANUcheckBack(1);
 }
 
-bool Tokenizer::isANUcheckBack(int n) {
+bool Lexer::isANUcheckBack(int n) {
 	char c = peekBack(n);
 
 	if ((c & 0b11000000) == 0b10000000) return true;
@@ -154,35 +159,31 @@ bool Tokenizer::isANUcheckBack(int n) {
 	return false;
 }
 
-char Tokenizer::peek() {
+char Lexer::peek() {
 	if (AtEnd()) return '\0';
 	return source->at(current);
 }
 
-char Tokenizer::peekNext(int n) {
+char Lexer::peekNext(int n) {
 	if (current + n >= source->length()) return '\0';
 	return source->at(current + n);
 }
 
-char Tokenizer::peekBack(int n) { return source->at(current - n); }
+char Lexer::peekBack(int n) { return source->at(current - n); }
 
-char Tokenizer::advance() {
-	// if (current >= source->length()) return '\0';
-	// std::cout << current << ", " << current + 1 << ", " <<
-	// source->length()
-	// << "\n" << std::endl; std::cout << source->at(current + 1) <<
-	// std::endl;
+char Lexer::advance() {
 	char c = source->at(current);
 	current++;
+	column++;
 	return c;
 }
 
-void Tokenizer::addToken(TokenType token) {
+void Lexer::addToken(TokenType token) {
 	std::string substr = source->substr(start, current - start);
-	tokens.push_back(Token(token, substr, line));
+	tokens.push_back(Token(token, substr, line, column, current, fp));
 }
 
-bool Tokenizer::match(char expected) {
+bool Lexer::match(char expected) {
 	if (AtEnd()) return false;
 	if (source->at(current) != expected) return false;
 
@@ -190,19 +191,32 @@ bool Tokenizer::match(char expected) {
 	return true;
 }
 
-char Tokenizer::peekNext() {
+char Lexer::peekNext() {
 	if (current + 1 >= source->length()) return '\0';
 	return source->at(current + 1);
 }
 
-void Tokenizer::string() {
+void Lexer::string() {
 	while (peek() != '"' && !AtEnd()) {
-		if (peek() == '\n') line++;
+		if (peek() == '\n') {
+			line++;
+			column = 1;
+		}
 		advance();
 	}
 
 	if (AtEnd()) {
-		std::cerr << "Unterminated String on line " << line << std::endl;
+		messages.push_back(
+			Message{.message = fmt::format("Unterminated string"),
+					.level = Severity::Error,
+					.code = "E0002",
+					.span = Location{
+						.fp = fp,
+						.line = line,
+						.column = column,
+						.char_start = current,
+						.len = 1,
+					}});
 		return;
 	}
 
@@ -214,12 +228,12 @@ void Tokenizer::string() {
 	addToken(TokenType::STRING);
 }
 
-void Tokenizer::number() {
+void Lexer::number() {
 	while (isDigit(peek()))
 		advance();
 
 	// Look for a fractional part.
-	if (peek() == '.' && Tokenizer::isDigit(peekNext())) {
+	if (peek() == '.' && Lexer::isDigit(peekNext())) {
 		// Consume the "."
 		advance();
 
@@ -230,7 +244,7 @@ void Tokenizer::number() {
 	addToken(TokenType::NUMBER);
 }
 
-void Tokenizer::identifier() {
+void Lexer::identifier() {
 	while (isAlphaNumericUnicode(peek()))
 		advance();
 
@@ -244,7 +258,7 @@ void Tokenizer::identifier() {
 		}
 	}
 
-	std::cout << (int)type << ", " << text << std::endl;
+	// std::cout << (int)type << ", " << text << std::endl;
 
 	addToken(type);
 }

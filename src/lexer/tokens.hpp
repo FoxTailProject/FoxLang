@@ -8,13 +8,18 @@ enum class TokenType;
 
 class Token {
 public:
-	Token(TokenType type, std::string lexeme, int line)
-		: type(type), lexeme(lexeme), line(line) {}
+	Token(TokenType type, std::string lexeme, unsigned long line,
+		  unsigned long column, unsigned long char_start, std::string fp)
+		: type(type), lexeme(lexeme), line(line), column(column),
+		  char_start(char_start), fp(fp) {}
 
 public:
 	TokenType type;
 	std::string lexeme;
-	int line;
+	unsigned long line;
+	unsigned long column;
+	unsigned long char_start;
+	std::string fp;
 	template <typename T> using Option = std::optional<T>;
 };
 

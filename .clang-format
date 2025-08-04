@@ -11,7 +11,7 @@ SpacesInLineCommentPrefix:
     Minimum: 1
     Maximum: -1
 EmptyLineBeforeAccessModifier: Always
-SeparateDefinitionBlocks: Always
+SeparateDefinitionBlocks: Leave
 SpaceBeforeInheritanceColon: true
 BreakInheritanceList: BeforeColon
 IndentAccessModifiers: False
