@@ -1,9 +1,7 @@
 #pragma once
 
-#include <cmath>
 #include <fmt/color.h>
 #include <fmt/printf.h>
-#include <fstream>
 #include <string>
 
 namespace FoxLang {

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../lexer/tokens.hpp"
+#include "tokens.hpp"
 
 #include <cstdlib>
 #include <fmt/core.h>
@@ -36,7 +36,7 @@ public:
 
 	virtual Exec exec();
 
-	virtual llvm::Value *accept(ASTVisitor &ir) = 0;
+	virtual void accept(ASTVisitor &ir) = 0;
 };
 
 /// ExprAST - Base class for all expression nodes.
@@ -54,7 +54,7 @@ public:
 
 	std::string printName() const override;
 
-	virtual llvm::Value *accept(ASTVisitor &ir) override;
+	void accept(ASTVisitor &ir) override;
 };
 
 /// VariableExprAST - Expression class for referencing a variable, like "a".
@@ -67,7 +67,7 @@ public:
 
 	std::string printName() const override;
 
-	virtual llvm::Value *accept(ASTVisitor &ir) override;
+	void accept(ASTVisitor &ir) override;
 };
 
 /// BinaryExprAST - Expression class for a binary operator.
@@ -84,7 +84,7 @@ public:
 	std::vector<AST *> getChildren() const override;
 
 	std::string printName() const override;
-	virtual llvm::Value *accept(ASTVisitor &ir) override;
+	void accept(ASTVisitor &ir) override;
 };
 
 /// CallExprAST - Expression class for function calls.
@@ -102,7 +102,7 @@ public:
 
 	std::string printName() const override;
 
-	virtual llvm::Value *accept(ASTVisitor &ir) override;
+	void accept(ASTVisitor &ir) override;
 };
 
 class VarDecl : public StmtAST {
@@ -120,21 +120,22 @@ public:
 
 	std::string printName() const override;
 
-	virtual llvm::Value *accept(ASTVisitor &ir) override;
+	void accept(ASTVisitor &ir) override;
 };
 
 class ReturnStmt : public StmtAST {
 public:
-	std::shared_ptr<ExprAST> value;
+	std::optional<std::shared_ptr<ExprAST>> value;
 
 public:
-	ReturnStmt(std::shared_ptr<ExprAST> value) : value(std::move(value)) {}
+	ReturnStmt(std::optional<std::shared_ptr<ExprAST>> value)
+		: value(std::move(value)) {}
 
 	std::vector<AST *> getChildren() const override;
 
 	std::string printName() const override;
 
-	virtual llvm::Value *accept(ASTVisitor &ir) override;
+	void accept(ASTVisitor &ir) override;
 };
 
 class ExprStmt : public StmtAST {
@@ -148,7 +149,22 @@ public:
 
 	std::string printName() const override;
 
-	virtual llvm::Value *accept(ASTVisitor &ir) override;
+	void accept(ASTVisitor &ir) override;
+};
+
+class Literal : public ExprAST {
+public:
+	typedef std::variant<std::string, bool> Data;
+	Data data;
+
+public:
+	Literal(Data data) : data(data) {}
+
+	virtual std::vector<AST *> getChildren() const override;
+
+	virtual std::string printName() const override;
+
+	void accept(ASTVisitor &ir) override;
 };
 
 class TypeAST : public AST {
@@ -160,7 +176,7 @@ public:
 
 	std::string printName() const override;
 
-	virtual llvm::Value *accept(ASTVisitor &ir) override;
+	void accept(ASTVisitor &ir) override;
 };
 
 class BlockAST : public AST {
@@ -176,7 +192,7 @@ public:
 
 	std::string printName() const override;
 
-	virtual llvm::Value *accept(ASTVisitor &ir) override;
+	void accept(ASTVisitor &ir) override;
 };
 
 class IfStmt : public StmtAST {
@@ -194,7 +210,24 @@ public:
 
 	std::string printName() const override;
 
-	llvm::Value *accept(ASTVisitor &ir) override;
+	void accept(ASTVisitor &ir) override;
+};
+
+class WhileStmt : public StmtAST {
+public:
+	std::shared_ptr<ExprAST> condition;
+	std::shared_ptr<BlockAST> block;
+
+public:
+	WhileStmt(std::shared_ptr<ExprAST> condition,
+			  std::shared_ptr<BlockAST> block)
+		: condition(condition), block(block) {}
+
+	std::vector<AST *> getChildren() const override;
+
+	std::string printName() const override;
+
+	void accept(ASTVisitor &ir) override;
 };
 
 /// PrototypeAST - This class represents the "prototype" for a function,
@@ -219,7 +252,7 @@ public:
 
 	std::string printName() const override;
 
-	virtual llvm::Value *accept(ASTVisitor &ir) override;
+	void accept(ASTVisitor &ir) override;
 };
 
 /// FunctionAST - This class represents a function definition itself.
@@ -237,7 +270,7 @@ public:
 
 	std::string printName() const override;
 
-	virtual llvm::Value *accept(ASTVisitor &ir) override;
+	void accept(ASTVisitor &ir) override;
 };
 
 class FileAST : public AST {
@@ -265,7 +298,7 @@ public:
 		return std::monostate{};
 	}
 
-	virtual llvm::Value *accept(ASTVisitor &ir) override;
+	void accept(ASTVisitor &ir) override;
 };
 
 /// GetTokPrecedence - Get the precedence of the pending binary operator token.

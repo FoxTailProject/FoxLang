@@ -2,13 +2,10 @@
 
 #include <deque>
 #include <fmt/format.h>
-#include <iostream>
-#include <memory>
-#include <queue>
 #include <string>
 #include <vector>
 
-#include "../message.hpp"
+#include "message.hpp"
 #include "tokens.hpp"
 
 namespace FoxLang {

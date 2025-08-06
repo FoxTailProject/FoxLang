@@ -1,5 +1,7 @@
 #include "message.hpp"
 #include <cctype>
+#include <cmath>
+#include <fstream>
 
 namespace FoxLang {
 auto strip_whitespace(std::string str) {

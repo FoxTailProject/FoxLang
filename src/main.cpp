@@ -7,10 +7,10 @@
 
 #include "../vendor/argparse/argparse.hpp"
 
-#include "ast/nodes.hpp"
-#include "ast/parser.hpp"
-#include "ir/generator.hpp"
-#include "lexer/lexer.hpp"
+#include "ast_nodes.hpp"
+#include "ast_parser.hpp"
+#include "ir_generator.hpp"
+#include "lexer.hpp"
 
 #include "message.hpp"
 

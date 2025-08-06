@@ -1,5 +1,5 @@
-#include "nodes.hpp"
-#include "../ir/generator.hpp"
+#include "ast_nodes.hpp"
+#include "ir_generator.hpp"
 
 #include <iostream>
 
@@ -58,7 +58,7 @@ std::string VarDecl::printName() const {
 
 std::vector<AST *> ReturnStmt::getChildren() const {
 	std::vector<AST *> r;
-	r.push_back(value.get());
+	if (value) r.push_back(value.value().get());
 	return r;
 }
 
@@ -133,17 +133,31 @@ std::vector<AST *> IfStmt::getChildren() const {
 	return vec;
 }
 
-llvm::Value *BlockAST::accept(ASTVisitor &v) { return v.visit(*this); }
-llvm::Value *BinaryExprAST::accept(ASTVisitor &v) { return v.visit(*this); }
-llvm::Value *CallExprAST::accept(ASTVisitor &v) { return v.visit(*this); }
-llvm::Value *NumberExprAST::accept(ASTVisitor &v) { return v.visit(*this); }
-llvm::Value *VariableExprAST::accept(ASTVisitor &v) { return v.visit(*this); }
-llvm::Value *FileAST::accept(ASTVisitor &v) { return v.visit(*this); }
-llvm::Value *FunctionAST::accept(ASTVisitor &v) { return v.visit(*this); }
-llvm::Value *PrototypeAST::accept(ASTVisitor &v) { return v.visit(*this); }
-llvm::Value *ExprStmt::accept(ASTVisitor &v) { return v.visit(*this); }
-llvm::Value *ReturnStmt::accept(ASTVisitor &v) { return v.visit(*this); }
-llvm::Value *VarDecl::accept(ASTVisitor &v) { return v.visit(*this); }
-llvm::Value *TypeAST::accept(ASTVisitor &v) { return v.visit(*this); }
-llvm::Value *IfStmt::accept(ASTVisitor &v) { return v.visit(*this); }
+std::string WhileStmt::printName() const { return "WhileStmt"; }
+
+std::vector<AST *> WhileStmt::getChildren() const {
+	std::vector<AST *> vec;
+	vec.push_back(condition.get());
+	vec.push_back(block.get());
+	return vec;
+}
+
+std::vector<AST *> Literal::getChildren() const { return std::vector<AST *>(); }
+std::string Literal::printName() const { return "Literal"; }
+
+void BlockAST::accept(ASTVisitor &v) { v.visit(*this); }
+void BinaryExprAST::accept(ASTVisitor &v) { v.visit(*this); }
+void CallExprAST::accept(ASTVisitor &v) { v.visit(*this); }
+void NumberExprAST::accept(ASTVisitor &v) { v.visit(*this); }
+void VariableExprAST::accept(ASTVisitor &v) { v.visit(*this); }
+void FileAST::accept(ASTVisitor &v) { v.visit(*this); }
+void FunctionAST::accept(ASTVisitor &v) { v.visit(*this); }
+void PrototypeAST::accept(ASTVisitor &v) { v.visit(*this); }
+void ExprStmt::accept(ASTVisitor &v) { v.visit(*this); }
+void Literal::accept(ASTVisitor &v) { v.visit(*this); }
+void ReturnStmt::accept(ASTVisitor &v) { v.visit(*this); }
+void VarDecl::accept(ASTVisitor &v) { v.visit(*this); }
+void TypeAST::accept(ASTVisitor &v) { v.visit(*this); }
+void IfStmt::accept(ASTVisitor &v) { v.visit(*this); }
+void WhileStmt::accept(ASTVisitor &v) { v.visit(*this); }
 } // namespace FoxLang

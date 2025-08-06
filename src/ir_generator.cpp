@@ -1,6 +1,8 @@
-#include "generator.hpp"
+#include "ir_generator.hpp"
 #include <fmt/base.h>
+#include <llvm/IR/Constants.h>
 #include <llvm/IR/Verifier.h>
+#include <variant>
 
 namespace FoxLang::IR {
 std::unique_ptr<llvm::LLVMContext> Generator::context =
@@ -12,38 +14,47 @@ std::unique_ptr<llvm::Module> Generator::llvm_module =
 std::map<std::string, llvm::Value *> Generator::named_values =
 	std::map<std::string, llvm::Value *>();
 
-llvm::Value *Generator::visit(BlockAST &it) {
+void Generator::visit(BlockAST &it) {
 	for (auto stmt : it.content) {
 		stmt->accept(*this);
+		// visit(stmt);
 	}
 
-	return nullptr;
+	return;
 }
 
-llvm::Value *Generator::visit(BinaryExprAST &it) {
-	auto left = it.LHS->accept(*this);
-	auto right = it.RHS->accept(*this);
-	if (!left || !right) return nullptr;
+void Generator::visit(BinaryExprAST &it) {
+	it.LHS->accept(*this);
+	auto left = returned;
+	it.RHS->accept(*this);
+	auto right = returned;
+	if (!left || !right) return;
 
 	switch (it.Op.type) {
-	case TokenType::PLUS:
-		return builder->CreateAdd(left, right);
+	case TokenType::PLUS: {
+		returned = builder->CreateAdd(left, right);
+		return;
+	}
 	case TokenType::MINUS:
-		return builder->CreateSub(left, right);
+		returned = builder->CreateSub(left, right);
+		return;
 	case TokenType::STAR:
-		return builder->CreateMul(left, right);
+		returned = builder->CreateMul(left, right);
+		return;
 	case TokenType::LESS:
-		return builder->CreateICmpULT(left, right);
+		returned = builder->CreateICmpULT(left, right);
+		return;
 	case TokenType::GREATER:
-		return builder->CreateICmpUGT(left, right);
+		returned = builder->CreateICmpUGT(left, right);
+		return;
 	default:
 		std::cout << "Unimplemented binary operation '" << it.Op.lexeme << "'"
 				  << std::endl;
-		return nullptr;
+		return;
 	}
 }
 
-llvm::Value *Generator::visit(CallExprAST &it) {
+void Generator::visit(CallExprAST &it) {
 	llvm::Function *callee = llvm_module->getFunction(it.Callee);
 	if (!callee) {
 		// TODO: Generate a new function prototype
@@ -51,41 +62,42 @@ llvm::Value *Generator::visit(CallExprAST &it) {
 		// then it throws an error
 		std::cout << "Could not find function '" << it.Callee << "'"
 				  << std::endl;
-		return nullptr;
+		return;
 	}
 
 	if (callee->arg_size() != it.Args.size()) {
 		std::cout << "Call and fuction parity do not match" << std::endl;
-		return nullptr;
+		return;
 	}
 
 	std::vector<llvm::Value *> args(it.Args.size());
 	for (int i = 0, e = it.Args.size(); i < e; i++) {
-		auto a = it.Args[i]->accept(*this);
+		it.Args[i]->accept(*this);
+		auto a = returned;
 		if (!a) {
 			std::cout << "Unable to compile argument" << std::endl;
-			return nullptr;
+			return;
 		}
 		args[i] = a;
 	}
 
-	return builder->CreateCall(callee, args);
+	returned = builder->CreateCall(callee, args);
 }
 
-llvm::Value *Generator::visit(NumberExprAST &it) {
-	return llvm::ConstantInt::get(*context,
-								  llvm::APInt(32, atoi(it.num.c_str())));
+void Generator::visit(NumberExprAST &it) {
+	returned =
+		llvm::ConstantInt::get(*context, llvm::APInt(32, atoi(it.num.c_str())));
 }
 
-llvm::Value *Generator::visit(VariableExprAST &it) {
+void Generator::visit(VariableExprAST &it) {
 	if (named_values.count(it.name))
-		return named_values[it.name];
+		returned = named_values[it.name];
 	else {
-		return nullptr;
+		return;
 	}
 }
 
-llvm::Value *Generator::visit(FileAST &it) {
+void Generator::visit(FileAST &it) {
 	std::cout << "file time baby!\n";
 	for (auto child : it.getChildren()) {
 		child->accept(*this);
@@ -93,19 +105,22 @@ llvm::Value *Generator::visit(FileAST &it) {
 
 	llvm::verifyModule(*llvm_module);
 	llvm_module->print(llvm::errs(), nullptr);
-	return nullptr;
+	return;
 }
 
-llvm::Value *Generator::visit(FunctionAST &it) {
+void Generator::visit(FunctionAST &it) {
 	llvm::Function *func = llvm_module->getFunction(it.proto->name);
 
-	if (!func) func = (llvm::Function *)it.proto->accept(*this);
-	if (!func) return nullptr;
+	if (!func) {
+		it.proto->accept(*this);
+		func = (llvm::Function *)returned;
+	}
+	if (!func) return;
 
 	if (!func->empty()) {
 		std::cout << "Cannot redefine function '" << it.proto->name << "'"
 				  << std::endl;
-		return nullptr;
+		return;
 	}
 
 	llvm::BasicBlock *bodyBlock =
@@ -122,10 +137,10 @@ llvm::Value *Generator::visit(FunctionAST &it) {
 	it.body->accept(*this);
 
 	llvm::verifyFunction(*func);
-	return func;
+	returned = func;
 }
 
-llvm::Value *Generator::visit(PrototypeAST &it) {
+void Generator::visit(PrototypeAST &it) {
 	std::vector<llvm::Type *> ints(it.args.size(),
 								   llvm::Type::getInt32Ty(*context));
 	llvm::FunctionType *ft =
@@ -136,16 +151,22 @@ llvm::Value *Generator::visit(PrototypeAST &it) {
 	int i = 0;
 	for (auto &arg : f->args())
 		arg.setName(it.args[i++]);
-	return f;
+	returned = f;
 }
 
-llvm::Value *Generator::visit(ReturnStmt &it) {
-	builder->CreateRet(it.value->accept(*this));
-	return nullptr;
+void Generator::visit(ReturnStmt &it) {
+	if (it.value) {
+		it.value.value()->accept(*this);
+		builder->CreateRet(returned);
+	} else
+		builder->CreateRetVoid();
+
+	return;
 }
 
-llvm::Value *Generator::visit(IfStmt &it) {
-	auto cond = it.condition->accept(*this);
+void Generator::visit(IfStmt &it) {
+	it.condition->accept(*this);
+	auto cond = returned;
 	auto function = builder->GetInsertBlock()->getParent();
 	auto true_block = llvm::BasicBlock::Create(*context, "if_true", function);
 
@@ -167,7 +188,7 @@ llvm::Value *Generator::visit(IfStmt &it) {
 		builder->CreateCondBr(cond, true_block, final_block);
 
 		builder->SetInsertPoint(final_block);
-		return nullptr;
+		return;
 	}
 
 	builder->SetInsertPoint(true_block);
@@ -192,30 +213,70 @@ llvm::Value *Generator::visit(IfStmt &it) {
 
 	builder->SetInsertPoint(final_block);
 
-	return nullptr;
+	return;
 }
 
-llvm::Value *Generator::visit(VarDecl &it) {
-	if (!it.value) return nullptr;
-	llvm::Value *tmp = it.value.value()->accept(*this);
+void Generator::visit(WhileStmt &it) {
+	auto func = builder->GetInsertBlock()->getParent();
+	auto cond_block = llvm::BasicBlock::Create(*context, "while_cond", func);
+
+	builder->CreateBr(cond_block);
+
+	auto block = llvm::BasicBlock::Create(*context, "while_block", func);
+	builder->SetInsertPoint(block);
+	it.block->accept(*this);
+	builder->CreateBr(cond_block);
+
+	builder->SetInsertPoint(cond_block);
+	it.condition->accept(*this);
+	auto cond = returned;
+	auto end = llvm::BasicBlock::Create(*context, "while_return", func);
+	builder->CreateCondBr(cond, block, end);
+	builder->SetInsertPoint(end);
+
+	return;
+}
+
+void Generator::visit(VarDecl &it) {
+	if (!it.value) return;
+	it.value.value()->accept(*this);
+	llvm::Value *tmp = returned;
 
 	if (!it.mut) {
 		tmp->setName(it.name);
 		named_values[it.name] = tmp;
-		return tmp;
+		returned = tmp;
 	}
 
 	auto alloca =
 		builder->CreateAlloca(llvm::Type::getInt32Ty(*context), tmp, it.name);
 	named_values[it.name] = alloca;
-	return alloca;
+	returned = alloca;
 }
 
-llvm::Value *Generator::visit(TypeAST &it) { return nullptr; }
+void Generator::visit(TypeAST &it) { return; }
 
-llvm::Value *Generator::visit(ExprStmt &it) {
+void Generator::visit(ExprStmt &it) {
 	it.value->accept(*this);
-	return nullptr;
+	return;
+}
+
+template <class... Ts> struct overloads : Ts... {
+	using Ts::operator()...;
+};
+void Generator::visit(Literal &it) {
+	returned = std::visit(
+		overloads{
+			[](std::string &str) {
+				return (llvm::Value *)builder->CreateGlobalString(str);
+			},
+			[](bool &val) {
+				return val ? (llvm::Value *)llvm::ConstantInt::getTrue(*context)
+						   : (llvm::Value *)llvm::ConstantInt::getFalse(
+								 *context);
+			},
+		},
+		it.data);
 }
 
 } // namespace FoxLang::IR

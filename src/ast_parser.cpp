@@ -1,4 +1,4 @@
-#include "parser.hpp"
+#include "ast_parser.hpp"
 #include <fmt/format.h>
 #include <iostream>
 
@@ -82,6 +82,19 @@ std::optional<std::shared_ptr<ExprAST>> Parser::parsePrimary() {
 		return parseNumberExpr();
 	case TokenType::LEFT_PAREN:
 		return parseParenExpr();
+	case TokenType::STRING: {
+		auto c = current->lexeme;
+		current++;
+		return std::make_shared<Literal>(c);
+	}
+	case TokenType::TRUE: {
+		current++;
+		return std::make_shared<Literal>(true);
+	}
+	case TokenType::FALSE: {
+		current++;
+		return std::make_shared<Literal>(false);
+	}
 	}
 }
 
@@ -100,6 +113,8 @@ std::optional<std::shared_ptr<StmtAST>> Parser::parseStatement() {
 		return parseReturnStmt();
 	case TokenType::IF:
 		return parseIfStmt();
+	case TokenType::WHILE:
+		return parseWhileStmt();
 	default:
 		return parseExprStatement();
 	}
@@ -241,13 +256,11 @@ std::optional<std::shared_ptr<IfStmt>> Parser::parseIfStmt() {
 	auto cond = parseExpression();
 	if (!cond) {
 		LogError("Need a condition for an if statement", "E0106");
-		return std::nullopt;
 	}
 
 	auto block = parseBklessBlock();
 	if (!block) {
 		LogError("Need a block for an if statement", "E0107");
-		return std::nullopt;
 	}
 
 	std::optional<std::shared_ptr<BlockAST>> else_ = std::nullopt;
@@ -257,12 +270,30 @@ std::optional<std::shared_ptr<IfStmt>> Parser::parseIfStmt() {
 									// inside the else of the previous if
 		if (!else_) {
 			LogError("Unable to parse block inside else", "E0108");
-			return std::nullopt;
 		}
 	}
 
+	if (!cond || !block) return std::nullopt;
 	return std::make_shared<IfStmt>(std::move(cond.value()),
 									std::move(block.value()), std::move(else_));
+}
+
+std::optional<std::shared_ptr<WhileStmt>> Parser::parseWhileStmt() {
+	current++; // move past while statement
+
+	auto cond = parseExpression();
+	if (!cond) {
+		LogError("Need a condition for a while statment", "E0112");
+	}
+
+	auto block = parseBklessBlock();
+	if (!block) {
+		LogError("Need a block for a while statement", "E0113");
+	}
+
+	if (!cond || !block) return std::nullopt;
+	return std::make_shared<WhileStmt>(std::move(cond.value()),
+									   std::move(block.value()));
 }
 
 std::optional<std::shared_ptr<PrototypeAST>> Parser::parsePrototype() {
@@ -333,10 +364,16 @@ std::optional<std::shared_ptr<FunctionAST>> Parser::parseDefinition() {
 
 std::optional<std::shared_ptr<ReturnStmt>> Parser::parseReturnStmt() {
 	current++;
+
+	if (current->type == TokenType::SEMICOLON) {
+		current++;
+		return std::make_shared<ReturnStmt>(std::nullopt);
+	}
+
 	auto expr = parseExpression();
-	if (!expr) return std::nullopt;
+	// if (!expr) return std::nullopt;
 	current++;
-	return std::make_shared<ReturnStmt>(std::move(expr.value()));
+	return std::make_shared<ReturnStmt>(std::move(expr));
 }
 
 FileAST *Parser::parse() {
@@ -366,6 +403,7 @@ FileAST *Parser::parse() {
 }
 
 void Parser::LogError(std::string message, std::string code) {
+	std::cout << "Error " << code << ": " << message << std::endl;
 	messages.push_back(Message{
 		.message = message,
 		.level = Severity::Error,

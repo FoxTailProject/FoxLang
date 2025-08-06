@@ -1,11 +1,10 @@
 #pragma once
 
-#include "../message.hpp"
-#include "nodes.hpp"
+#include "ast_nodes.hpp"
+#include "message.hpp"
 
 #include <deque>
 #include <memory>
-#include <queue>
 
 namespace FoxLang {
 class Parser {
@@ -31,6 +30,7 @@ private:
 	std::optional<std::shared_ptr<BlockAST>> parseBklessBlock();
 	std::optional<std::shared_ptr<VarDecl>> parseLet();
 	std::optional<std::shared_ptr<IfStmt>> parseIfStmt();
+	std::optional<std::shared_ptr<WhileStmt>> parseWhileStmt();
 	std::optional<std::shared_ptr<TypeAST>> parseType();
 	std::optional<std::shared_ptr<PrototypeAST>> parsePrototype();
 	std::optional<std::shared_ptr<FunctionAST>> parseDefinition();
