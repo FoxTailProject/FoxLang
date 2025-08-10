@@ -7,10 +7,10 @@
 
 namespace FoxLang::IR {
 class Generator : public ASTVisitor {
+public:
 	static std::unique_ptr<llvm::LLVMContext> context;
 	static std::unique_ptr<llvm::IRBuilder<>> builder;
 	static std::unique_ptr<llvm::Module> llvm_module;
-	static std::map<std::string, llvm::Value *> named_values;
 	llvm::Value *returned;
 
 public:
@@ -20,6 +20,7 @@ public:
 	virtual void visit(NumberExprAST &it) override;
 	virtual void visit(VariableExprAST &it) override;
 	virtual void visit(FileAST &it) override;
+	virtual void visit(ParameterAST &it) override;
 	virtual void visit(FunctionAST &it) override;
 	virtual void visit(PrototypeAST &it) override;
 	virtual void visit(ExprStmt &it) override;
@@ -29,5 +30,6 @@ public:
 	virtual void visit(WhileStmt &it) override;
 	virtual void visit(VarDecl &it) override;
 	virtual void visit(TypeAST &it) override;
+	virtual void visit(StructAST &it) override;
 };
 } // namespace FoxLang::IR

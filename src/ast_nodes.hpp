@@ -30,6 +30,8 @@ public:
 	typedef std::variant<std::monostate, int, float, std::string, bool> Exec;
 	virtual ~AST() = default;
 
+	llvm::Value *llvm_value;
+
 	virtual std::vector<AST *> getChildren() const;
 
 	virtual std::string printName() const;
@@ -61,6 +63,7 @@ public:
 class VariableExprAST : public ExprAST {
 public:
 	std::string name;
+	AST *resolved_name;
 
 public:
 	explicit VariableExprAST(const std::string &name) : name(name) {}
@@ -92,6 +95,7 @@ class CallExprAST : public ExprAST {
 public:
 	std::string Callee;
 	std::vector<std::shared_ptr<ExprAST>> Args;
+	AST *resolved_name;
 
 public:
 	CallExprAST(const std::string &Callee,
@@ -169,13 +173,56 @@ public:
 
 class TypeAST : public AST {
 public:
-	std::string ident;
+	// std::string ident;
+	enum class Type {
+		i128,
+		i64,
+		i32,
+		i16,
+		i8,
+		u128,
+		u64,
+		u32,
+		u16,
+		u8,
+		f128,
+		f64,
+		f32,
+		f16,
+		f8,
+		string,
+		_bool,
+		_struct,
+	};
+	Type type;
+
+	typedef struct {
+		std::string name;
+		Type value;
+	} ctype;
+	const static ctype conversion[17];
 
 public:
-	explicit TypeAST(const std::string &ident) : ident(ident) {}
+	explicit TypeAST(const Type &type) : type(type) {}
 
 	std::string printName() const override;
 
+	void accept(ASTVisitor &ir) override;
+};
+
+class StructAST : public AST {
+public:
+	std::string name;
+	std::vector<std::string> names;
+	std::vector<std::shared_ptr<TypeAST>> types;
+
+public:
+	StructAST(std::string name, std::vector<std::string> names,
+			  std::vector<std::shared_ptr<TypeAST>> types)
+		: name(name), names(names), types(types) {}
+
+	std::vector<AST *> getChildren() const override;
+	std::string printName() const override;
 	void accept(ASTVisitor &ir) override;
 };
 
@@ -189,9 +236,7 @@ public:
 		: content(std::move(content)), blockless(blockless) {}
 
 	std::vector<AST *> getChildren() const override;
-
 	std::string printName() const override;
-
 	void accept(ASTVisitor &ir) override;
 };
 
@@ -230,21 +275,36 @@ public:
 	void accept(ASTVisitor &ir) override;
 };
 
+/// ParameteAST - Represents the paramteres for a function to ease the process
+/// of name resolution and ir generation
+class ParameterAST : public AST {
+public:
+	std::string name;
+	std::shared_ptr<TypeAST> type;
+
+public:
+	ParameterAST(std::string name, std::shared_ptr<TypeAST> type)
+		: name(name), type(type) {}
+
+	std::vector<AST *> getChildren() const override;
+	std::string printName() const override;
+	void accept(ASTVisitor &v) override;
+};
+
 /// PrototypeAST - This class represents the "prototype" for a function,
 /// which captures its name, and its argument names (thus implicitly the number
 /// of arguments the function takes).
 class PrototypeAST : public AST {
 public:
 	std::string name;
-	std::vector<std::string> args;
-	std::vector<std::shared_ptr<TypeAST>> types;
+	std::vector<std::shared_ptr<ParameterAST>> parameters;
 	std::shared_ptr<TypeAST> retType;
 
 public:
-	PrototypeAST(const std::string &name, std::vector<std::string> args,
-				 std::vector<std::shared_ptr<TypeAST>> types,
+	PrototypeAST(const std::string &name,
+				 std::vector<std::shared_ptr<ParameterAST>> parameters,
 				 std::shared_ptr<TypeAST> retType)
-		: name(name), args(args), types(types), retType(std::move(retType)) {}
+		: name(name), parameters(parameters), retType(std::move(retType)) {}
 
 	const std::string &getName() const { return name; }
 

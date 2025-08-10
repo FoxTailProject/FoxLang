@@ -11,6 +11,7 @@ public:
 	virtual void visit(NumberExprAST &it) = 0;
 	virtual void visit(VariableExprAST &it) = 0;
 	virtual void visit(FileAST &it) = 0;
+	virtual void visit(ParameterAST &it) = 0;
 	virtual void visit(FunctionAST &it) = 0;
 	virtual void visit(PrototypeAST &it) = 0;
 	virtual void visit(ExprStmt &it) = 0;
@@ -20,5 +21,6 @@ public:
 	virtual void visit(WhileStmt &it) = 0;
 	virtual void visit(VarDecl &it) = 0;
 	virtual void visit(TypeAST &it) = 0;
+	virtual void visit(StructAST &it) = 0;
 };
 } // namespace FoxLang

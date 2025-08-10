@@ -35,21 +35,21 @@ void Message::print() {
 
 	int digits = ceil(log10(span.line));
 
-	fmt::print(fg(fmt::color::light_sky_blue), "{:>{}} |\n", "", digits);
+	fmt::print(fg(fmt::color::light_sky_blue), "{} |\n",
+			   std::string(digits + 1, ' '));
 	fmt::print(fg(fmt::color::light_sky_blue), "{} |  ", span.line);
 
+	unsigned long len = span.end - span.start;
 	std::ifstream file(span.fp);
-	std::string line;
-	int l = 0;
-	while (l < span.line) {
-		std::getline(file, line);
-		l++;
-	}
+	file.seekg(span.start);
+	// std::string line;
+	char line[len + 1];
+	file.read(line, len);
 
-	auto line_stripped = strip_whitespace(line);
-	fmt::print("{}\n", line_stripped.str);
-	fmt::print(fg(fmt::color::light_sky_blue), "{:>{}} | {:>{}}", "", digits,
-			   "", span.column - line_stripped.count);
-	fmt::print(fg(fmt::color::crimson), "{:^>{}}\n\n", "", span.len);
+	fmt::print("{}\n", std::string(line));
+	fmt::print(fg(fmt::color::light_sky_blue), "{} | {}",
+			   std::string(digits + 1, ' '),
+			   std::string(span.column - len, ' '));
+	fmt::print(fg(fmt::color::crimson), "{:^>{}}\n\n", "", len);
 }
 } // namespace FoxLang

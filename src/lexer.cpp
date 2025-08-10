@@ -120,8 +120,8 @@ void Lexer::currentToken() {
 							.fp = fp,
 							.line = line,
 							.column = column,
-							.char_start = current,
-							.len = 1,
+							.start = current,
+							.end = current + 1,
 						}});
 	} break;
 	}
@@ -214,8 +214,8 @@ void Lexer::string() {
 						.fp = fp,
 						.line = line,
 						.column = column,
-						.char_start = current,
-						.len = 1,
+						.start = current,
+						.end = current + 1,
 					}});
 		return;
 	}

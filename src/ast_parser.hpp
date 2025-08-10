@@ -32,6 +32,7 @@ private:
 	std::optional<std::shared_ptr<IfStmt>> parseIfStmt();
 	std::optional<std::shared_ptr<WhileStmt>> parseWhileStmt();
 	std::optional<std::shared_ptr<TypeAST>> parseType();
+	std::optional<std::shared_ptr<StructAST>> parseStruct();
 	std::optional<std::shared_ptr<PrototypeAST>> parsePrototype();
 	std::optional<std::shared_ptr<FunctionAST>> parseDefinition();
 	std::optional<std::shared_ptr<ReturnStmt>> parseReturnStmt();

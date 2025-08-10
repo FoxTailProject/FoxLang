@@ -204,8 +204,53 @@ std::optional<std::shared_ptr<TypeAST>> Parser::parseType() {
 	}
 
 	std::string type = current->lexeme;
+	TypeAST::Type t = TypeAST::Type::_struct;
 	current++;
-	return std::make_shared<TypeAST>(type);
+
+	for (auto i : TypeAST::conversion) {
+		if (i.name == type) {
+			t = i.value;
+			break;
+		}
+	}
+
+	return std::make_shared<TypeAST>(t);
+}
+
+std::optional<std::shared_ptr<StructAST>> Parser::parseStruct() {
+	current++;
+
+	std::string name = current->lexeme;
+	if (current->type != TokenType::IDENTIFIER) {
+		LogError("Expected name for struct", "E0112");
+	}
+
+	current++;
+	if (current->type != TokenType::LEFT_BRACKET) {
+		LogError("Expected bracket in struct definition", "E0113");
+	}
+
+	current++;
+	std::vector<std::string> names;
+	std::vector<std::shared_ptr<TypeAST>> types;
+
+	while (current->type != TokenType::RIGHT_BRACKET) {
+		names.push_back(current->lexeme);
+		if (current->type != TokenType::IDENTIFIER)
+			LogError("Expected name for element in struct", "E0400");
+
+		auto type = parseType();
+		if (!type) {
+			current++;
+			continue;
+		}
+		types.push_back(type.value());
+		current++;
+	}
+
+	current++;
+
+	return std::make_shared<StructAST>(name, names, types);
 }
 
 std::optional<std::shared_ptr<VarDecl>> Parser::parseLet() {
@@ -345,8 +390,13 @@ std::optional<std::shared_ptr<PrototypeAST>> Parser::parsePrototype() {
 		return std::nullopt;
 	}
 
-	return std::make_shared<PrototypeAST>(name, std::move(argNames),
-										  std::move(typeNames),
+	std::vector<std::shared_ptr<ParameterAST>> params;
+	for (int i = 0; i < argNames.size(); ++i) {
+		params.push_back(
+			std::make_shared<ParameterAST>(argNames[i], typeNames[i]));
+	}
+
+	return std::make_shared<PrototypeAST>(name, std::move(params),
 										  std::move(retType.value()));
 }
 
@@ -379,7 +429,6 @@ std::optional<std::shared_ptr<ReturnStmt>> Parser::parseReturnStmt() {
 FileAST *Parser::parse() {
 	std::vector<std::shared_ptr<AST>> fileNodes;
 	while (true) {
-		std::cout << (int)current->type << ", " << current->lexeme << std::endl;
 		switch (current->type) {
 		case TokenType::EOF_TOKEN:
 			return new FileAST("test", std::move(fileNodes));
@@ -393,6 +442,10 @@ FileAST *Parser::parse() {
 			// fileNodes.push_back(
 			// static_cast<ExprAST *>(definition.value().release()));
 		} break;
+		case TokenType::STRUCT: {
+			auto def = parseStruct();
+			fileNodes.push_back(std::move(def.value()));
+		} break;
 		default: {
 			LogError(fmt::format("Unexpected character '{}'", current->lexeme),
 					 "E0010");
@@ -404,30 +457,30 @@ FileAST *Parser::parse() {
 
 void Parser::LogError(std::string message, std::string code) {
 	std::cout << "Error " << code << ": " << message << std::endl;
-	messages.push_back(Message{
-		.message = message,
-		.level = Severity::Error,
-		.code = code,
-		.span = Location{
-			.fp = current->fp,
-			.line = current->line,
-			.column = current->column - current->lexeme.length(),
-			.char_start = current->char_start - current->lexeme.length(),
-			.len = current->lexeme.length(),
-		}});
+	messages.push_back(
+		Message{.message = message,
+				.level = Severity::Error,
+				.code = code,
+				.span = Location{
+					.fp = current->fp,
+					.line = current->line,
+					.column = current->column - current->lexeme.length(),
+					.start = current->char_start - current->lexeme.length(),
+					.end = current->char_start,
+				}});
 }
 
 void Parser::LogWarning(std::string message, std::string code) {
-	messages.push_back(Message{
-		.message = message,
-		.level = Severity::Warning,
-		.code = code,
-		.span = Location{
-			.fp = current->fp,
-			.line = current->line,
-			.column = current->column - current->lexeme.length(),
-			.char_start = current->char_start - current->lexeme.length(),
-			.len = current->lexeme.length(),
-		}});
+	messages.push_back(
+		Message{.message = message,
+				.level = Severity::Warning,
+				.code = code,
+				.span = Location{
+					.fp = current->fp,
+					.line = current->line,
+					.column = current->column - current->lexeme.length(),
+					.start = current->char_start - current->lexeme.length(),
+					.end = current->char_start,
+				}});
 }
 } // namespace FoxLang

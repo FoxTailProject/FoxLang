@@ -9,8 +9,7 @@ enum class Severity;
 struct Location {
 	std::string fp;
 	unsigned long line, column;
-	unsigned long char_start;
-	size_t len;
+	unsigned long start, end;
 };
 
 struct Message {

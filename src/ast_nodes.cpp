@@ -72,14 +72,50 @@ std::vector<AST *> ExprStmt::getChildren() const {
 
 std::string ExprStmt::printName() const { return fmt::format("ExprStmt"); }
 
-std::string TypeAST::printName() const {
-	return fmt::format("TypeAST ({})", ident);
+std::string TypeAST::printName() const { return fmt::format("TypeAST ()"); }
+const TypeAST::ctype TypeAST::conversion[17] = {
+	{.name = "i128", .value = Type::i128},
+	{.name = "i64", .value = Type::i64},
+	{.name = "i32", .value = Type::i32},
+	{.name = "i16", .value = Type::i16},
+	{.name = "i8", .value = Type::i8},
+	{.name = "u128", .value = Type::u128},
+	{.name = "u64", .value = Type::u64},
+	{.name = "u32", .value = Type::u32},
+	{.name = "u16", .value = Type::u16},
+	{.name = "u8", .value = Type::u8},
+	{.name = "f128", .value = Type::f128},
+	{.name = "f64", .value = Type::f64},
+	{.name = "f32", .value = Type::f32},
+	{.name = "f16", .value = Type::f16},
+	{.name = "f8", .value = Type::f8},
+	{.name = "string", .value = Type::string},
+	{.name = "bool", .value = Type::_bool},
+};
+
+std::vector<AST *> StructAST::getChildren() const {
+	std::vector<AST *> r;
+	for (auto i : types)
+		r.push_back(i.get());
+	return r;
+}
+std::string StructAST::printName() const {
+	return fmt::format("StructAST ({})", names.size());
 }
 
 std::string BlockAST::printName() const { return "BlockAST"; }
 
+std::vector<AST *> ParameterAST::getChildren() const {
+	std::vector<AST *> t;
+	return t;
+}
+
+std::string ParameterAST::printName() const {
+	return fmt::format("Parameter ({})", name);
+}
+
 std::string PrototypeAST::printName() const {
-	return fmt::format("Prototype ({}, {} params)", name, args.size());
+	return fmt::format("Prototype ({}, {} params)", name, parameters.size());
 }
 
 std::string FunctionAST::printName() const { return "Function"; }
@@ -100,8 +136,8 @@ std::vector<AST *> BlockAST::getChildren() const {
 std::vector<AST *> PrototypeAST::getChildren() const {
 	std::vector<AST *> rets;
 
-	for (size_t i = 0; i < types.size(); i++) {
-		rets.push_back(types[i].get());
+	for (size_t i = 0; i < parameters.size(); i++) {
+		rets.push_back(parameters[i]->type.get());
 	}
 	rets.push_back(retType.get());
 	return rets;
@@ -153,11 +189,13 @@ void VariableExprAST::accept(ASTVisitor &v) { v.visit(*this); }
 void FileAST::accept(ASTVisitor &v) { v.visit(*this); }
 void FunctionAST::accept(ASTVisitor &v) { v.visit(*this); }
 void PrototypeAST::accept(ASTVisitor &v) { v.visit(*this); }
+void ParameterAST::accept(ASTVisitor &v) { v.visit(*this); }
 void ExprStmt::accept(ASTVisitor &v) { v.visit(*this); }
 void Literal::accept(ASTVisitor &v) { v.visit(*this); }
 void ReturnStmt::accept(ASTVisitor &v) { v.visit(*this); }
 void VarDecl::accept(ASTVisitor &v) { v.visit(*this); }
 void TypeAST::accept(ASTVisitor &v) { v.visit(*this); }
+void StructAST::accept(ASTVisitor &v) { v.visit(*this); }
 void IfStmt::accept(ASTVisitor &v) { v.visit(*this); }
 void WhileStmt::accept(ASTVisitor &v) { v.visit(*this); }
 } // namespace FoxLang

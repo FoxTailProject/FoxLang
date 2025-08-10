@@ -13,6 +13,7 @@
 #include "lexer.hpp"
 
 #include "message.hpp"
+#include "name_resolution.hpp"
 
 void printTree(const std::string &prefix, const FoxLang::AST *node,
 			   bool isLeft);
@@ -55,6 +56,9 @@ auto main(int argc, char *argv[]) -> int {
 
 	FoxLang::Parser ast(tokens, messages);
 	auto tree = ast.parse();
+
+	FoxLang::NameResolution nr(messages);
+	tree->accept(nr);
 
 	bool erred = false;
 	for (auto i : messages) {

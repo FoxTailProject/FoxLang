@@ -11,8 +11,6 @@ std::unique_ptr<llvm::IRBuilder<>> Generator::builder =
 	std::make_unique<llvm::IRBuilder<>>(*Generator::context);
 std::unique_ptr<llvm::Module> Generator::llvm_module =
 	std::make_unique<llvm::Module>("FoxLang", *Generator::context);
-std::map<std::string, llvm::Value *> Generator::named_values =
-	std::map<std::string, llvm::Value *>();
 
 void Generator::visit(BlockAST &it) {
 	for (auto stmt : it.content) {
@@ -90,15 +88,18 @@ void Generator::visit(NumberExprAST &it) {
 }
 
 void Generator::visit(VariableExprAST &it) {
-	if (named_values.count(it.name))
-		returned = named_values[it.name];
-	else {
-		return;
-	}
+	std::cout << it.name << std::endl;
+	returned = it.resolved_name->llvm_value;
 }
 
+void breadth_function_define(FunctionAST *, Generator &);
 void Generator::visit(FileAST &it) {
 	std::cout << "file time baby!\n";
+	for (auto child : it.getChildren()) {
+		FunctionAST *c = dynamic_cast<FunctionAST *>(child);
+		if (c != nullptr) breadth_function_define(c, *this);
+	}
+
 	for (auto child : it.getChildren()) {
 		child->accept(*this);
 	}
@@ -127,32 +128,15 @@ void Generator::visit(FunctionAST &it) {
 		llvm::BasicBlock::Create(*context, "entry", func);
 	builder->SetInsertPoint(bodyBlock);
 
-	named_values.clear();
-	auto c = func->arg_size();
-	auto a = it.proto->args;
-	for (size_t i = 0; i < c; ++i) {
-		named_values[a[i]] = (func->arg_begin() + i);
-	}
-
 	it.body->accept(*this);
 
 	llvm::verifyFunction(*func);
 	returned = func;
 }
 
-void Generator::visit(PrototypeAST &it) {
-	std::vector<llvm::Type *> ints(it.args.size(),
-								   llvm::Type::getInt32Ty(*context));
-	llvm::FunctionType *ft =
-		llvm::FunctionType::get(llvm::Type::getInt32Ty(*context), ints, false);
-	llvm::Function *f = llvm::Function::Create(
-		ft, llvm::Function::ExternalLinkage, it.name, llvm_module.get());
-
-	int i = 0;
-	for (auto &arg : f->args())
-		arg.setName(it.args[i++]);
-	returned = f;
-}
+// not called due to the breadth pass
+void Generator::visit(PrototypeAST &) {}
+void Generator::visit(ParameterAST &) {}
 
 void Generator::visit(ReturnStmt &it) {
 	if (it.value) {
@@ -244,17 +228,18 @@ void Generator::visit(VarDecl &it) {
 
 	if (!it.mut) {
 		tmp->setName(it.name);
-		named_values[it.name] = tmp;
+		it.llvm_value = tmp;
 		returned = tmp;
 	}
 
 	auto alloca =
 		builder->CreateAlloca(llvm::Type::getInt32Ty(*context), tmp, it.name);
-	named_values[it.name] = alloca;
+	it.llvm_value = alloca;
 	returned = alloca;
 }
 
-void Generator::visit(TypeAST &it) { return; }
+void Generator::visit(TypeAST &) {}
+void Generator::visit(StructAST &it) {}
 
 void Generator::visit(ExprStmt &it) {
 	it.value->accept(*this);
@@ -279,4 +264,21 @@ void Generator::visit(Literal &it) {
 		it.data);
 }
 
+void breadth_function_define(FunctionAST *it, Generator &gen) {
+	std::vector<llvm::Type *> ints(it->proto->parameters.size(),
+								   llvm::Type::getInt32Ty(*gen.context));
+	llvm::FunctionType *ft = llvm::FunctionType::get(
+		llvm::Type::getInt32Ty(*gen.context), ints, false);
+	llvm::Function *f =
+		llvm::Function::Create(ft, llvm::Function::ExternalLinkage,
+							   it->proto->name, gen.llvm_module.get());
+
+	int i = 0;
+	for (auto &arg : f->args()) {
+		arg.setName(it->proto->parameters[i]->name);
+		it->proto->parameters[i++]->llvm_value = &arg;
+	}
+
+	it->llvm_value = f;
+}
 } // namespace FoxLang::IR
