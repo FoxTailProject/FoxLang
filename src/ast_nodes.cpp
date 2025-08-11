@@ -88,7 +88,6 @@ const TypeAST::ctype TypeAST::conversion[17] = {
 	{.name = "f64", .value = Type::f64},
 	{.name = "f32", .value = Type::f32},
 	{.name = "f16", .value = Type::f16},
-	{.name = "f8", .value = Type::f8},
 	{.name = "string", .value = Type::string},
 	{.name = "bool", .value = Type::_bool},
 };

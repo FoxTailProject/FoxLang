@@ -69,6 +69,11 @@ void NameResolution::visit(VariableExprAST &it) {
 }
 
 void NameResolution::visit(FileAST &it) {
+	// do structs before functions because functions can return/use a struct
+	// that has not yet been defined
+	for (auto i : it.expressions)
+		if (auto sit = dynamic_cast<StructAST *>(i.get())) depth_struct(*sit);
+
 	for (auto i : it.expressions) {
 		auto fit = dynamic_cast<FunctionAST *>(i.get());
 		if (fit != nullptr) depth_proto(*fit->proto);
@@ -78,7 +83,10 @@ void NameResolution::visit(FileAST &it) {
 		i->accept(*this);
 }
 
-void NameResolution::visit(ParameterAST &it) { scopes.back()[it.name] = &it; }
+void NameResolution::visit(ParameterAST &it) {
+	scopes.back()[it.name] = &it;
+	it.type->accept(*this);
+}
 
 void NameResolution::visit(FunctionAST &it) {
 	it.proto->accept(*this);
@@ -87,14 +95,12 @@ void NameResolution::visit(FunctionAST &it) {
 
 void NameResolution::visit(PrototypeAST &it) {
 	function_scope[it.name] = &it;
+	it.retType->accept(*this);
 
 	scopes.push_back(Scope());
-	for (auto i : it.parameters)
+	for (auto i : it.parameters) {
 		i->accept(*this);
-}
-
-void NameResolution::depth_proto(PrototypeAST &it) {
-	function_scope[it.name] = &it;
+	}
 }
 
 void NameResolution::visit(ExprStmt &it) { it.value->accept(*this); }
@@ -119,9 +125,72 @@ void NameResolution::visit(WhileStmt &it) {
 void NameResolution::visit(VarDecl &it) {
 	scopes.back()[it.name] = &it;
 
+	it.type->accept(*this);
+
 	if (it.value) it.value.value()->accept(*this);
 }
 
-void NameResolution::visit(TypeAST &) {}
-void NameResolution::visit(StructAST &it) {}
+std::ostream &operator<<(std::ostream &out, const TypeAST::Type value) {
+	using T = TypeAST::Type;
+	return out << [value] {
+#define PROCESS_VAL(p)                                                         \
+	case (p):                                                                  \
+		return #p;
+		switch (value) {
+			PROCESS_VAL(T::i128);
+			PROCESS_VAL(T::u128);
+			PROCESS_VAL(T::i64);
+			PROCESS_VAL(T::u64);
+			PROCESS_VAL(T::i32);
+			PROCESS_VAL(T::u32);
+			PROCESS_VAL(T::i16);
+			PROCESS_VAL(T::u16);
+			PROCESS_VAL(T::i8);
+			PROCESS_VAL(T::u8);
+			PROCESS_VAL(T::f128);
+			PROCESS_VAL(T::f64);
+			PROCESS_VAL(T::f32);
+			PROCESS_VAL(T::f16);
+			PROCESS_VAL(T::_bool);
+			PROCESS_VAL(T::_struct);
+			PROCESS_VAL(T::string);
+		}
+#undef PROCESS_VAL
+	}();
+}
+
+void NameResolution::visit(TypeAST &it) {
+	std::cout << "Type: " << it.type << std::endl;
+	std::cout << "type data: " << it.data << std::endl;
+	if (it.type != TypeAST::Type::_struct) return;
+
+	if (global_scope.find(it.data) == global_scope.end())
+		messages.push_back(
+			Message{.message = fmt::format("Undefined type {}", it.data),
+					.level = Severity::Error,
+					.code = "E0202",
+					.span = Location{
+						.fp = "test.fox",
+						.line = 100,
+						.column = 3,
+						.start = 0,
+						.end = it.data.length(),
+					}});
+
+	it.resolved_name = static_cast<StructAST *>(global_scope[it.data]);
+}
+void NameResolution::visit(StructAST &it) {
+	global_scope[it.name] = &it;
+
+	for (auto child : it.types)
+		child->accept(*this);
+}
+
+void NameResolution::depth_proto(PrototypeAST &it) {
+	function_scope[it.name] = &it;
+}
+
+void NameResolution::depth_struct(StructAST &it) {
+	global_scope[it.name] = &it;
+}
 } // namespace FoxLang

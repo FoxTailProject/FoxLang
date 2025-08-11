@@ -109,16 +109,60 @@ public:
 	void accept(ASTVisitor &ir) override;
 };
 
+class StructAST;
+class TypeAST : public AST {
+public:
+	// std::string ident;
+	enum class Type {
+		i128,
+		i64,
+		i32,
+		i16,
+		i8,
+		u128,
+		u64,
+		u32,
+		u16,
+		u8,
+		f128,
+		f64,
+		f32,
+		f16,
+		string,
+		_bool,
+		_struct,
+	};
+	Type type;
+	std::string data;
+	StructAST *resolved_name;
+
+	typedef struct {
+		std::string name;
+		Type value;
+	} ctype;
+	const static ctype conversion[17];
+
+public:
+	explicit TypeAST(const Type &type, std::string data)
+		: type(type), data(data) {}
+
+	std::string printName() const override;
+
+	void accept(ASTVisitor &ir) override;
+};
+
 class VarDecl : public StmtAST {
 public:
 	std::string name;
+	std::shared_ptr<TypeAST> type;
 	std::optional<std::shared_ptr<ExprAST>> value;
 	bool mut;
 
 public:
-	VarDecl(const std::string &name,
+	VarDecl(const std::string &name, std::shared_ptr<TypeAST> type,
 			std::optional<std::shared_ptr<ExprAST>> value, bool mut)
-		: name(name), value(std::move(value)), mut(mut) {}
+		: name(name), type(std::move(type)), value(std::move(value)), mut(mut) {
+	}
 
 	std::vector<AST *> getChildren() const override;
 
@@ -171,50 +215,12 @@ public:
 	void accept(ASTVisitor &ir) override;
 };
 
-class TypeAST : public AST {
-public:
-	// std::string ident;
-	enum class Type {
-		i128,
-		i64,
-		i32,
-		i16,
-		i8,
-		u128,
-		u64,
-		u32,
-		u16,
-		u8,
-		f128,
-		f64,
-		f32,
-		f16,
-		f8,
-		string,
-		_bool,
-		_struct,
-	};
-	Type type;
-
-	typedef struct {
-		std::string name;
-		Type value;
-	} ctype;
-	const static ctype conversion[17];
-
-public:
-	explicit TypeAST(const Type &type) : type(type) {}
-
-	std::string printName() const override;
-
-	void accept(ASTVisitor &ir) override;
-};
-
 class StructAST : public AST {
 public:
 	std::string name;
 	std::vector<std::string> names;
 	std::vector<std::shared_ptr<TypeAST>> types;
+	llvm::Type *llvm_value;
 
 public:
 	StructAST(std::string name, std::vector<std::string> names,

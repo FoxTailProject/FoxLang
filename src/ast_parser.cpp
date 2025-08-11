@@ -198,6 +198,7 @@ Parser::parseBinOpRHS(int precedence,
 }
 
 std::optional<std::shared_ptr<TypeAST>> Parser::parseType() {
+	std::cout << "Type " << current->lexeme << std::endl;
 	if (current->type != TokenType::IDENTIFIER) {
 		LogError("Unable to parse type", "E0200");
 		return std::nullopt;
@@ -214,7 +215,7 @@ std::optional<std::shared_ptr<TypeAST>> Parser::parseType() {
 		}
 	}
 
-	return std::make_shared<TypeAST>(t);
+	return std::make_shared<TypeAST>(t, type);
 }
 
 std::optional<std::shared_ptr<StructAST>> Parser::parseStruct() {
@@ -265,7 +266,7 @@ std::optional<std::shared_ptr<VarDecl>> Parser::parseLet() {
 
 	std::string name = current->lexeme;
 	current++;
-	auto type = parseType();
+	std::optional<std::shared_ptr<TypeAST>> type = parseType();
 
 	if (!type) {
 		LogError("Type inference is not yet implemented. If you wrote Haskell, "
@@ -275,7 +276,7 @@ std::optional<std::shared_ptr<VarDecl>> Parser::parseLet() {
 	}
 
 	if (current->type == TokenType::SEMICOLON) {
-		return std::make_shared<VarDecl>(name, std::nullopt, mut);
+		return std::make_shared<VarDecl>(name, type.value(), std::nullopt, mut);
 	}
 
 	if (current->type != TokenType::EQUAL) {
@@ -292,7 +293,7 @@ std::optional<std::shared_ptr<VarDecl>> Parser::parseLet() {
 	}
 	current++;
 
-	return std::make_shared<VarDecl>(name, std::move(value), mut);
+	return std::make_shared<VarDecl>(name, type.value(), std::move(value), mut);
 }
 
 std::optional<std::shared_ptr<IfStmt>> Parser::parseIfStmt() {
@@ -385,6 +386,8 @@ std::optional<std::shared_ptr<PrototypeAST>> Parser::parsePrototype() {
 
 	current++;
 	auto retType = parseType();
+	std::cout << "Ret type " << retType.value()->data << " for func " << name
+			  << std::endl;
 	if (!retType) {
 		LogError("Unable to parse return type of function", "E0111");
 		return std::nullopt;

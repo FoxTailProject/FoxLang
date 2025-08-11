@@ -12,6 +12,7 @@ public:
 	static std::unique_ptr<llvm::IRBuilder<>> builder;
 	static std::unique_ptr<llvm::Module> llvm_module;
 	llvm::Value *returned;
+	llvm::Type *returned_type;
 
 public:
 	virtual void visit(BlockAST &it) override;

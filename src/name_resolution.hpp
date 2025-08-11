@@ -36,5 +36,6 @@ public:
 	void visit(StructAST &it) override;
 
 	void depth_proto(PrototypeAST &);
+	void depth_struct(StructAST &);
 };
 } // namespace FoxLang

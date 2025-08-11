@@ -1,6 +1,7 @@
 #include "ir_generator.hpp"
 #include <fmt/base.h>
 #include <llvm/IR/Constants.h>
+#include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Verifier.h>
 #include <variant>
 
@@ -55,9 +56,6 @@ void Generator::visit(BinaryExprAST &it) {
 void Generator::visit(CallExprAST &it) {
 	llvm::Function *callee = llvm_module->getFunction(it.Callee);
 	if (!callee) {
-		// TODO: Generate a new function prototype
-		// If it doesn't have a body at the end of compilation
-		// then it throws an error
 		std::cout << "Could not find function '" << it.Callee << "'"
 				  << std::endl;
 		return;
@@ -93,8 +91,15 @@ void Generator::visit(VariableExprAST &it) {
 }
 
 void breadth_function_define(FunctionAST *, Generator &);
+void breadth_struct_define(StructAST *, Generator &);
 void Generator::visit(FileAST &it) {
 	std::cout << "file time baby!\n";
+	// need to do a struct pass then function pass because functions can return
+	// a struct that has not been defined yet
+	for (auto child : it.getChildren()) {
+		if (auto s = dynamic_cast<StructAST *>(child))
+			breadth_struct_define(s, *this);
+	}
 	for (auto child : it.getChildren()) {
 		FunctionAST *c = dynamic_cast<FunctionAST *>(child);
 		if (c != nullptr) breadth_function_define(c, *this);
@@ -226,19 +231,63 @@ void Generator::visit(VarDecl &it) {
 	it.value.value()->accept(*this);
 	llvm::Value *tmp = returned;
 
+	it.type->accept(*this);
+	llvm::Type *type = returned_type;
+
 	if (!it.mut) {
 		tmp->setName(it.name);
 		it.llvm_value = tmp;
 		returned = tmp;
 	}
 
-	auto alloca =
-		builder->CreateAlloca(llvm::Type::getInt32Ty(*context), tmp, it.name);
+	auto alloca = builder->CreateAlloca(type, tmp, it.name);
 	it.llvm_value = alloca;
 	returned = alloca;
 }
 
-void Generator::visit(TypeAST &) {}
+void Generator::visit(TypeAST &it) {
+	using T = TypeAST::Type;
+	switch (it.type) {
+	case T::i128:
+	case T::u128:
+		returned_type = llvm::IntegerType::get(*context, 128);
+		break;
+	case T::i64:
+	case T::u64:
+		returned_type = llvm::IntegerType::get(*context, 64);
+		break;
+	case T::i32:
+	case T::u32:
+		returned_type = llvm::IntegerType::get(*context, 32);
+		break;
+	case T::i16:
+	case T::u16:
+		returned_type = llvm::IntegerType::get(*context, 16);
+		break;
+	case T::i8:
+	case T::u8:
+		returned_type = llvm::IntegerType::get(*context, 8);
+		break;
+	case T::f128:
+		returned_type = llvm::Type::getFP128Ty(*context);
+		break;
+	case T::f64:
+		returned_type = llvm::Type::getDoubleTy(*context);
+		break;
+	case T::f32:
+		returned_type = llvm::Type::getFloatTy(*context);
+		break;
+	case T::f16:
+		returned_type = llvm::Type::getHalfTy(*context);
+		break;
+	case T::_bool:
+		returned_type = llvm::Type::getInt1Ty(*context);
+		break;
+	case T::_struct:
+		returned_type = it.resolved_name->llvm_value;
+		break;
+	}
+}
 void Generator::visit(StructAST &it) {}
 
 void Generator::visit(ExprStmt &it) {
@@ -265,10 +314,17 @@ void Generator::visit(Literal &it) {
 }
 
 void breadth_function_define(FunctionAST *it, Generator &gen) {
-	std::vector<llvm::Type *> ints(it->proto->parameters.size(),
-								   llvm::Type::getInt32Ty(*gen.context));
-	llvm::FunctionType *ft = llvm::FunctionType::get(
-		llvm::Type::getInt32Ty(*gen.context), ints, false);
+	std::vector<llvm::Type *> params(it->proto->parameters.size());
+
+	for (int i = 0; i < it->proto->parameters.size(); i++) {
+		auto param = it->proto->parameters[i];
+		param->accept(gen);
+		params[i] = gen.returned_type;
+	}
+
+	it->proto->retType->accept(gen);
+	llvm::FunctionType *ft =
+		llvm::FunctionType::get(gen.returned_type, params, false);
 	llvm::Function *f =
 		llvm::Function::Create(ft, llvm::Function::ExternalLinkage,
 							   it->proto->name, gen.llvm_module.get());
@@ -280,5 +336,11 @@ void breadth_function_define(FunctionAST *it, Generator &gen) {
 	}
 
 	it->llvm_value = f;
+}
+
+void breadth_struct_define(StructAST *s, Generator &gen) {
+	std::cout << "hello struct" << std::endl;
+	auto struct_ = llvm::StructType::create(*gen.context, s->name);
+	s->llvm_value = struct_;
 }
 } // namespace FoxLang::IR
