@@ -199,6 +199,19 @@ Parser::parseBinOpRHS(int precedence,
 
 std::optional<std::shared_ptr<TypeAST>> Parser::parseType() {
 	std::cout << "Type " << current->lexeme << std::endl;
+	if (current->type == TokenType::LEFT_SQUARE_BRACKET) {
+		auto count = parseNumberExpr();
+		current++;
+		auto child = parseType();
+		return std::nullopt;
+	}
+
+	bool pointer = false;
+	if (current->type == TokenType::BITWISE_AND) {
+		pointer = true;
+		current++;
+	}
+
 	if (current->type != TokenType::IDENTIFIER) {
 		LogError("Unable to parse type", "E0200");
 		return std::nullopt;
@@ -215,7 +228,12 @@ std::optional<std::shared_ptr<TypeAST>> Parser::parseType() {
 		}
 	}
 
-	return std::make_shared<TypeAST>(t, type);
+	if (pointer)
+		return std::make_shared<TypeAST>(
+			TypeAST::Type::pointer,
+			std::make_shared<TypeAST>(t, std::nullopt, type), "&");
+
+	return std::make_shared<TypeAST>(t, std::nullopt, type);
 }
 
 std::optional<std::shared_ptr<StructAST>> Parser::parseStruct() {
@@ -239,6 +257,7 @@ std::optional<std::shared_ptr<StructAST>> Parser::parseStruct() {
 		names.push_back(current->lexeme);
 		if (current->type != TokenType::IDENTIFIER)
 			LogError("Expected name for element in struct", "E0400");
+		current++;
 
 		auto type = parseType();
 		if (!type) {
@@ -246,7 +265,11 @@ std::optional<std::shared_ptr<StructAST>> Parser::parseStruct() {
 			continue;
 		}
 		types.push_back(type.value());
-		current++;
+
+		if (current->type != TokenType::COMMA &&
+			current->type != TokenType::RIGHT_BRACKET)
+			LogError("Expected a comma after element in struct", "E0010");
+		if (current->type != TokenType::RIGHT_BRACKET) current++;
 	}
 
 	current++;

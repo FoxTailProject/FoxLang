@@ -73,7 +73,7 @@ std::vector<AST *> ExprStmt::getChildren() const {
 std::string ExprStmt::printName() const { return fmt::format("ExprStmt"); }
 
 std::string TypeAST::printName() const { return fmt::format("TypeAST ()"); }
-const TypeAST::ctype TypeAST::conversion[17] = {
+const TypeAST::ctype TypeAST::conversion[] = {
 	{.name = "i128", .value = Type::i128},
 	{.name = "i64", .value = Type::i64},
 	{.name = "i32", .value = Type::i32},
@@ -88,7 +88,7 @@ const TypeAST::ctype TypeAST::conversion[17] = {
 	{.name = "f64", .value = Type::f64},
 	{.name = "f32", .value = Type::f32},
 	{.name = "f16", .value = Type::f16},
-	{.name = "string", .value = Type::string},
+	// {.name = "string", .value = Type::string},
 	{.name = "bool", .value = Type::_bool},
 };
 

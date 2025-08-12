@@ -128,11 +128,14 @@ public:
 		f64,
 		f32,
 		f16,
-		string,
+		// string,
 		_bool,
 		_struct,
+		array,
+		pointer,
 	};
 	Type type;
+	std::optional<std::shared_ptr<TypeAST>> child;
 	std::string data;
 	StructAST *resolved_name;
 
@@ -140,11 +143,13 @@ public:
 		std::string name;
 		Type value;
 	} ctype;
-	const static ctype conversion[17];
+	const static ctype conversion[16];
 
 public:
-	explicit TypeAST(const Type &type, std::string data)
-		: type(type), data(data) {}
+	explicit TypeAST(const Type &type,
+					 std::optional<std::shared_ptr<TypeAST>> child,
+					 std::string data)
+		: type(type), child(child), data(data) {}
 
 	std::string printName() const override;
 
@@ -220,7 +225,7 @@ public:
 	std::string name;
 	std::vector<std::string> names;
 	std::vector<std::shared_ptr<TypeAST>> types;
-	llvm::Type *llvm_value;
+	llvm::StructType *llvm_value;
 
 public:
 	StructAST(std::string name, std::vector<std::string> names,

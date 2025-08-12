@@ -153,7 +153,9 @@ std::ostream &operator<<(std::ostream &out, const TypeAST::Type value) {
 			PROCESS_VAL(T::f16);
 			PROCESS_VAL(T::_bool);
 			PROCESS_VAL(T::_struct);
-			PROCESS_VAL(T::string);
+			// PROCESS_VAL(T::string);
+			PROCESS_VAL(T::pointer);
+			PROCESS_VAL(T::array);
 		}
 #undef PROCESS_VAL
 	}();
@@ -162,6 +164,8 @@ std::ostream &operator<<(std::ostream &out, const TypeAST::Type value) {
 void NameResolution::visit(TypeAST &it) {
 	std::cout << "Type: " << it.type << std::endl;
 	std::cout << "type data: " << it.data << std::endl;
+	if (it.type == TypeAST::Type::pointer)
+		return it.child.value()->accept(*this);
 	if (it.type != TypeAST::Type::_struct) return;
 
 	if (global_scope.find(it.data) == global_scope.end())

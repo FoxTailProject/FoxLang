@@ -227,22 +227,29 @@ void Generator::visit(WhileStmt &it) {
 }
 
 void Generator::visit(VarDecl &it) {
+	it.type->accept(*this);
+	llvm::Type *type = returned_type;
+
+	if (it.mut) {
+		auto alloca = builder->CreateAlloca(type, nullptr, it.name);
+
+		if (it.value) {
+			it.value.value()->accept(*this);
+			builder->CreateStore(returned, alloca);
+		}
+
+		it.llvm_value = alloca;
+		returned = alloca;
+		return;
+	}
+
 	if (!it.value) return;
 	it.value.value()->accept(*this);
 	llvm::Value *tmp = returned;
 
-	it.type->accept(*this);
-	llvm::Type *type = returned_type;
-
-	if (!it.mut) {
-		tmp->setName(it.name);
-		it.llvm_value = tmp;
-		returned = tmp;
-	}
-
-	auto alloca = builder->CreateAlloca(type, tmp, it.name);
-	it.llvm_value = alloca;
-	returned = alloca;
+	tmp->setName(it.name);
+	it.llvm_value = tmp;
+	returned = tmp;
 }
 
 void Generator::visit(TypeAST &it) {
@@ -286,9 +293,22 @@ void Generator::visit(TypeAST &it) {
 	case T::_struct:
 		returned_type = it.resolved_name->llvm_value;
 		break;
+	case T::pointer: {
+		it.child.value()->accept(*this);
+		returned_type = llvm::PointerType::get(returned_type, 0);
+	} break;
 	}
 }
-void Generator::visit(StructAST &it) {}
+void Generator::visit(StructAST &it) {
+	std::vector<llvm::Type *> types;
+
+	for (auto i : it.types) {
+		i->accept(*this);
+		types.push_back(returned_type);
+	}
+
+	it.llvm_value->setBody(types);
+}
 
 void Generator::visit(ExprStmt &it) {
 	it.value->accept(*this);
