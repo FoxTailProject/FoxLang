@@ -15,7 +15,7 @@ This list is roughly in order of implementation
  - [ ] Multi-threading + general code cleanup
  - [ ] Macro & compile-time execution
  - [ ] Plugin system (possibly for extending language systems, like rust proc macros for custom parsing)
- - [ ] C/C++ support & external defs (I would like strong c++ support, as opposed to rust)
+ - [ ] C/C++ support & external defs (I would like strong c++ support, unlike rust)
 
 ## Building
 
