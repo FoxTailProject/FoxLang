@@ -41,20 +41,63 @@ public:
 	virtual void accept(ASTVisitor &ir) = 0;
 };
 
-/// ExprAST - Base class for all expression nodes.
 class ExprAST : public AST {};
 
 class StmtAST : public AST {};
 
+class Literal : public ExprAST {};
+
 /// NumberExprAST - Expression class for numeric literals like "1.0".
-class NumberExprAST : public ExprAST {
+class NumberExprAST : public Literal {
 public:
-	std::string num;
+	std::string value;
 
 public:
-	explicit NumberExprAST(const std::string &num) : num(num) {}
+	explicit NumberExprAST(const std::string &value) : value(value) {}
 
 	std::string printName() const override;
+
+	void accept(ASTVisitor &ir) override;
+};
+
+class StringLiteralAST : public Literal {
+public:
+	std::string value;
+
+public:
+	StringLiteralAST(const std::string &value) : value(value) {}
+
+	virtual std::string printName() const override;
+
+	void accept(ASTVisitor &ir) override;
+};
+
+class BoolLiteralAST : public Literal {
+public:
+	bool value;
+
+public:
+	BoolLiteralAST(const bool value) : value(value) {}
+
+	virtual std::string printName() const override;
+
+	void accept(ASTVisitor &ir) override;
+};
+
+class TypeAST;
+class StructLiteralAST : public Literal {
+public:
+	std::vector<std::string> names;
+	std::vector<std::shared_ptr<ExprAST>> values;
+	TypeAST *type;
+
+public:
+	StructLiteralAST(std::vector<std::string> names,
+					 std::vector<std::shared_ptr<ExprAST>> values)
+		: names(names), values(values) {}
+
+	virtual std::string printName() const override;
+	virtual std::vector<AST *> getChildren() const override;
 
 	void accept(ASTVisitor &ir) override;
 };
@@ -114,7 +157,7 @@ class TypeAST : public AST {
 public:
 	// std::string ident;
 	enum class Type {
-		i128,
+		i128 = 2,
 		i64,
 		i32,
 		i16,
@@ -133,6 +176,9 @@ public:
 		_struct,
 		array,
 		pointer,
+		__int,	// __: for internal use only, for unsized literals
+		__uint, // can implicitly cast to __int
+		__float,
 	};
 	Type type;
 	std::optional<std::shared_ptr<TypeAST>> child;
@@ -154,6 +200,21 @@ public:
 	std::string printName() const override;
 
 	void accept(ASTVisitor &ir) override;
+
+	inline bool operator==(const TypeAST &rhs) const {
+		if (type != rhs.type) return false;
+
+		if (type != Type::pointer && type != Type::array &&
+			type != Type::_struct)
+			return true;
+
+		if (type == Type::_struct) return resolved_name == rhs.resolved_name;
+
+		// both ptr and arr only have a child (no arr len rn)
+		// so simple child comparison
+		return *child.value().get() == *rhs.child.value().get();
+	}
+	inline bool operator!=(const TypeAST &rhs) const { return !(*this == rhs); }
 };
 
 class VarDecl : public StmtAST {
@@ -205,32 +266,33 @@ public:
 	void accept(ASTVisitor &ir) override;
 };
 
-class Literal : public ExprAST {
+// i know that its better to not have this as a seperate class and have the
+// struct manage it, but this makes things like name res easier
+class StructMemberAST : public AST {
 public:
-	typedef std::variant<std::string, bool> Data;
-	Data data;
+	std::string name;
+	std::shared_ptr<TypeAST> value;
+	llvm::Value *llvm_value;
 
 public:
-	Literal(Data data) : data(data) {}
+	StructMemberAST(std::string name, std::shared_ptr<TypeAST> value)
+		: name(name), value(value) {}
 
-	virtual std::vector<AST *> getChildren() const override;
-
-	virtual std::string printName() const override;
-
+	std::vector<AST *> getChildren() const override;
+	std::string printName() const override;
 	void accept(ASTVisitor &ir) override;
 };
 
 class StructAST : public AST {
 public:
 	std::string name;
-	std::vector<std::string> names;
-	std::vector<std::shared_ptr<TypeAST>> types;
+	std::vector<std::shared_ptr<StructMemberAST>> members;
 	llvm::StructType *llvm_value;
 
 public:
-	StructAST(std::string name, std::vector<std::string> names,
-			  std::vector<std::shared_ptr<TypeAST>> types)
-		: name(name), names(names), types(types) {}
+	StructAST(std::string name,
+			  std::vector<std::shared_ptr<StructMemberAST>> members)
+		: name(name), members(members) {}
 
 	std::vector<AST *> getChildren() const override;
 	std::string printName() const override;

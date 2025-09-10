@@ -14,7 +14,28 @@ std::vector<AST *> AST::getChildren() const {
 }
 
 std::string NumberExprAST::printName() const {
-	return fmt::format("NumberExprAST ({})", num);
+	return fmt::format("NumberExprAST ({})", value);
+}
+
+std::string BoolLiteralAST::printName() const {
+	return fmt::format("BoolLiteralAST ({})", value);
+}
+
+std::string StringLiteralAST::printName() const {
+	return fmt::format("StringLiteralAST ({})", value);
+}
+
+std::string StructLiteralAST::printName() const {
+	return fmt::format("StructLiteralAST ({})", names.size());
+}
+
+std::vector<AST *> StructLiteralAST::getChildren() const {
+	std::vector<AST *> r;
+
+	for (auto i : values)
+		r.push_back(i.get());
+
+	return r;
 }
 
 std::string VariableExprAST::printName() const {
@@ -92,14 +113,23 @@ const TypeAST::ctype TypeAST::conversion[] = {
 	{.name = "bool", .value = Type::_bool},
 };
 
+std::vector<AST *> StructMemberAST::getChildren() const {
+	std::vector<AST *> r;
+	r.push_back(value.get());
+	return r;
+}
+std::string StructMemberAST::printName() const {
+	return fmt::format("StructMemberAST");
+}
+
 std::vector<AST *> StructAST::getChildren() const {
 	std::vector<AST *> r;
-	for (auto i : types)
+	for (auto i : members)
 		r.push_back(i.get());
 	return r;
 }
 std::string StructAST::printName() const {
-	return fmt::format("StructAST ({})", names.size());
+	return fmt::format("StructAST ({})", members.size());
 }
 
 std::string BlockAST::printName() const { return "BlockAST"; }
@@ -177,24 +207,24 @@ std::vector<AST *> WhileStmt::getChildren() const {
 	return vec;
 }
 
-std::vector<AST *> Literal::getChildren() const { return std::vector<AST *>(); }
-std::string Literal::printName() const { return "Literal"; }
-
 void BlockAST::accept(ASTVisitor &v) { v.visit(*this); }
 void BinaryExprAST::accept(ASTVisitor &v) { v.visit(*this); }
 void CallExprAST::accept(ASTVisitor &v) { v.visit(*this); }
 void NumberExprAST::accept(ASTVisitor &v) { v.visit(*this); }
+void StringLiteralAST::accept(ASTVisitor &v) { v.visit(*this); }
+void BoolLiteralAST::accept(ASTVisitor &v) { v.visit(*this); }
+void StructLiteralAST::accept(ASTVisitor &v) { v.visit(*this); }
 void VariableExprAST::accept(ASTVisitor &v) { v.visit(*this); }
 void FileAST::accept(ASTVisitor &v) { v.visit(*this); }
 void FunctionAST::accept(ASTVisitor &v) { v.visit(*this); }
 void PrototypeAST::accept(ASTVisitor &v) { v.visit(*this); }
 void ParameterAST::accept(ASTVisitor &v) { v.visit(*this); }
 void ExprStmt::accept(ASTVisitor &v) { v.visit(*this); }
-void Literal::accept(ASTVisitor &v) { v.visit(*this); }
 void ReturnStmt::accept(ASTVisitor &v) { v.visit(*this); }
 void VarDecl::accept(ASTVisitor &v) { v.visit(*this); }
 void TypeAST::accept(ASTVisitor &v) { v.visit(*this); }
 void StructAST::accept(ASTVisitor &v) { v.visit(*this); }
+void StructMemberAST::accept(ASTVisitor &v) { v.visit(*this); }
 void IfStmt::accept(ASTVisitor &v) { v.visit(*this); }
 void WhileStmt::accept(ASTVisitor &v) { v.visit(*this); }
 } // namespace FoxLang

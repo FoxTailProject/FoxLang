@@ -25,6 +25,7 @@ private:
 	std::optional<std::shared_ptr<ExprAST>> parsePrimary();
 	std::optional<std::shared_ptr<ExprAST>> parseExpression();
 	std::optional<std::shared_ptr<StmtAST>> parseStatement();
+	std::optional<std::shared_ptr<StructLiteralAST>> parseStructInstance();
 	std::optional<std::shared_ptr<ExprStmt>> parseExprStatement();
 	std::optional<std::shared_ptr<BlockAST>> parseBlock();
 	std::optional<std::shared_ptr<BlockAST>> parseBklessBlock();

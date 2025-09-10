@@ -1,4 +1,5 @@
 #include "name_resolution.hpp"
+#include "ast_nodes.hpp"
 #include "message.hpp"
 
 namespace FoxLang {
@@ -37,6 +38,13 @@ void NameResolution::visit(CallExprAST &it) {
 }
 
 void NameResolution::visit(NumberExprAST &) {}
+void NameResolution::visit(StringLiteralAST &it) {}
+void NameResolution::visit(BoolLiteralAST &it) {}
+
+void NameResolution::visit(StructLiteralAST &it) {
+	for (auto i : it.values)
+		i->accept(*this);
+}
 
 void NameResolution::visit(VariableExprAST &it) {
 	Scope *i = &scopes.back();
@@ -104,7 +112,7 @@ void NameResolution::visit(PrototypeAST &it) {
 }
 
 void NameResolution::visit(ExprStmt &it) { it.value->accept(*this); }
-void NameResolution::visit(Literal &) {}
+// void NameResolution::visit(Literal &) {}
 
 void NameResolution::visit(ReturnStmt &it) {
 	if (it.value) it.value.value()->accept(*this);
@@ -186,9 +194,11 @@ void NameResolution::visit(TypeAST &it) {
 void NameResolution::visit(StructAST &it) {
 	global_scope[it.name] = &it;
 
-	for (auto child : it.types)
+	for (auto child : it.members)
 		child->accept(*this);
 }
+
+void NameResolution::visit(StructMemberAST &it) { it.value->accept(*this); }
 
 void NameResolution::depth_proto(PrototypeAST &it) {
 	function_scope[it.name] = &it;

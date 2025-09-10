@@ -17,23 +17,26 @@ class NameResolution : public ASTVisitor {
 public:
 	NameResolution(std::deque<Message> &m) : messages(m) {}
 
-	void visit(BlockAST &it) override;
-	void visit(BinaryExprAST &it) override;
-	void visit(CallExprAST &it) override;
-	void visit(NumberExprAST &it) override;
-	void visit(VariableExprAST &it) override;
-	void visit(FileAST &it) override;
-	void visit(ParameterAST &it) override;
-	void visit(FunctionAST &it) override;
-	void visit(PrototypeAST &it) override;
-	void visit(ExprStmt &it) override;
-	void visit(Literal &it) override;
-	void visit(ReturnStmt &it) override;
-	void visit(IfStmt &it) override;
-	void visit(WhileStmt &it) override;
-	void visit(VarDecl &it) override;
-	void visit(TypeAST &it) override;
-	void visit(StructAST &it) override;
+	virtual void visit(BlockAST &it);
+	virtual void visit(BinaryExprAST &it);
+	virtual void visit(CallExprAST &it);
+	virtual void visit(NumberExprAST &it);
+	virtual void visit(StringLiteralAST &it);
+	virtual void visit(BoolLiteralAST &it);
+	virtual void visit(StructLiteralAST &it);
+	virtual void visit(VariableExprAST &it);
+	virtual void visit(FileAST &it);
+	virtual void visit(ParameterAST &it);
+	virtual void visit(FunctionAST &it);
+	virtual void visit(PrototypeAST &it);
+	virtual void visit(ExprStmt &it);
+	virtual void visit(ReturnStmt &it);
+	virtual void visit(IfStmt &it);
+	virtual void visit(WhileStmt &it);
+	virtual void visit(VarDecl &it);
+	virtual void visit(TypeAST &it);
+	virtual void visit(StructMemberAST &it);
+	virtual void visit(StructAST &it);
 
 	void depth_proto(PrototypeAST &);
 	void depth_struct(StructAST &);

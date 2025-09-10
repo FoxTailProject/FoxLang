@@ -60,16 +60,13 @@ auto main(int argc, char *argv[]) -> int {
 	FoxLang::NameResolution nr(messages);
 	tree->accept(nr);
 
-	bool erred = false;
+	// bool erred = false;
+	handle_messages(messages);
 	for (auto i : messages) {
 		if (i.level == FoxLang::Severity::Error) {
-			erred = true;
-			break;
+			return 1;
 		}
 	}
-
-	handle_messages(messages);
-	if (erred) return 1;
 
 	if (compile_command["print-ast"] == true) printTree(tree);
 

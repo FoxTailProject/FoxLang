@@ -1,4 +1,5 @@
 #include "ast_parser.hpp"
+#include "ast_nodes.hpp"
 #include <fmt/format.h>
 #include <iostream>
 
@@ -85,17 +86,69 @@ std::optional<std::shared_ptr<ExprAST>> Parser::parsePrimary() {
 	case TokenType::STRING: {
 		auto c = current->lexeme;
 		current++;
-		return std::make_shared<Literal>(c);
+		return std::make_shared<StringLiteralAST>(c);
 	}
 	case TokenType::TRUE: {
 		current++;
-		return std::make_shared<Literal>(true);
+		return std::make_shared<BoolLiteralAST>(true);
 	}
 	case TokenType::FALSE: {
 		current++;
-		return std::make_shared<Literal>(false);
+		return std::make_shared<BoolLiteralAST>(false);
 	}
+	case TokenType::DOT: {
+		if ((current + 1)->type == TokenType::LEFT_BRACKET) {
+			return parseStructInstance();
+		}
+	} break;
 	}
+}
+
+std::optional<std::shared_ptr<StructLiteralAST>> Parser::parseStructInstance() {
+	if (current->type != TokenType::DOT ||
+		(current + 1)->type != TokenType::LEFT_BRACKET) {
+		// TODO: maybe log an error? i mean it shouldnt get called
+		return std::nullopt;
+	}
+
+	// .{
+	current += 2;
+
+	std::vector<std::string> names;
+	std::vector<std::shared_ptr<ExprAST>> vals;
+
+	while (current->type != TokenType::RIGHT_BRACKET) {
+		if (current->type != TokenType::DOT)
+			LogError("Dot before struct member name required", "E0015");
+		else
+			current++;
+
+		names.push_back(current->lexeme);
+		current++;
+
+		if (current->type != TokenType::EQUAL)
+			LogError("Expected = after name", "E0016");
+		else
+			current++;
+
+		auto val = parseExpression();
+
+		if (!val) {
+			current++;
+			continue;
+		}
+
+		if (current->type != TokenType::COMMA)
+			LogError("Comma after each struct member required", "E0016");
+		else
+			current++;
+
+		vals.push_back(val.value());
+	}
+
+	current++;
+
+	return std::make_shared<StructLiteralAST>(names, vals);
 }
 
 std::optional<std::shared_ptr<ExprAST>> Parser::parseExpression() {
@@ -250,11 +303,10 @@ std::optional<std::shared_ptr<StructAST>> Parser::parseStruct() {
 	}
 
 	current++;
-	std::vector<std::string> names;
-	std::vector<std::shared_ptr<TypeAST>> types;
+	std::vector<std::shared_ptr<StructMemberAST>> members;
 
 	while (current->type != TokenType::RIGHT_BRACKET) {
-		names.push_back(current->lexeme);
+		auto name = current->lexeme;
 		if (current->type != TokenType::IDENTIFIER)
 			LogError("Expected name for element in struct", "E0400");
 		current++;
@@ -264,17 +316,19 @@ std::optional<std::shared_ptr<StructAST>> Parser::parseStruct() {
 			current++;
 			continue;
 		}
-		types.push_back(type.value());
 
-		if (current->type != TokenType::COMMA &&
-			current->type != TokenType::RIGHT_BRACKET)
-			LogError("Expected a comma after element in struct", "E0010");
-		if (current->type != TokenType::RIGHT_BRACKET) current++;
+		if (current->type != TokenType::COMMA)
+			LogError("Expected a comma after every element in struct", "E0010");
+		else
+			current++;
+
+		members.push_back(
+			std::make_shared<StructMemberAST>(name, type.value()));
 	}
 
 	current++;
 
-	return std::make_shared<StructAST>(name, names, types);
+	return std::make_shared<StructAST>(name, members);
 }
 
 std::optional<std::shared_ptr<VarDecl>> Parser::parseLet() {

@@ -1,4 +1,5 @@
 #include "ir_generator.hpp"
+#include "ast_nodes.hpp"
 #include <fmt/base.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DerivedTypes.h>
@@ -81,9 +82,13 @@ void Generator::visit(CallExprAST &it) {
 }
 
 void Generator::visit(NumberExprAST &it) {
-	returned =
-		llvm::ConstantInt::get(*context, llvm::APInt(32, atoi(it.num.c_str())));
+	returned = llvm::ConstantInt::get(*context,
+									  llvm::APInt(32, atoi(it.value.c_str())));
 }
+
+void Generator::visit(StringLiteralAST &it) {}
+void Generator::visit(BoolLiteralAST &it) {}
+void Generator::visit(StructLiteralAST &it) {}
 
 void Generator::visit(VariableExprAST &it) {
 	std::cout << it.name << std::endl;
@@ -302,7 +307,7 @@ void Generator::visit(TypeAST &it) {
 void Generator::visit(StructAST &it) {
 	std::vector<llvm::Type *> types;
 
-	for (auto i : it.types) {
+	for (auto i : it.members) {
 		i->accept(*this);
 		types.push_back(returned_type);
 	}
@@ -310,28 +315,30 @@ void Generator::visit(StructAST &it) {
 	it.llvm_value->setBody(types);
 }
 
+void Generator::visit(StructMemberAST &it) { it.value->accept(*this); }
+
 void Generator::visit(ExprStmt &it) {
 	it.value->accept(*this);
 	return;
 }
 
-template <class... Ts> struct overloads : Ts... {
-	using Ts::operator()...;
-};
-void Generator::visit(Literal &it) {
-	returned = std::visit(
-		overloads{
-			[](std::string &str) {
-				return (llvm::Value *)builder->CreateGlobalString(str);
-			},
-			[](bool &val) {
-				return val ? (llvm::Value *)llvm::ConstantInt::getTrue(*context)
-						   : (llvm::Value *)llvm::ConstantInt::getFalse(
-								 *context);
-			},
-		},
-		it.data);
-}
+// template <class... Ts> struct overloads : Ts... {
+// using Ts::operator()...;
+// };
+// void Generator::visit(Literal &it) {
+// returned = std::visit(
+// overloads{
+// [](std::string &str) {
+// return (llvm::Value *)builder->CreateGlobalString(str);
+// },
+// [](bool &val) {
+// return val ? (llvm::Value *)llvm::ConstantInt::getTrue(*context)
+// : (llvm::Value *)llvm::ConstantInt::getFalse(
+// *context);
+// },
+// },
+// it.data);
+// }
 
 void breadth_function_define(FunctionAST *it, Generator &gen) {
 	std::vector<llvm::Type *> params(it->proto->parameters.size());
