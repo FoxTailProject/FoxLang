@@ -24,7 +24,7 @@ void TypeCheck::visit(BinaryExprAST &it) {
 	}
 
 	if (left_lit != null || right_lit != null) {
-		compare_lit_types(left, left_lit, right, right_lit);
+		compare_lit_types(*left, left_lit, *right, right_lit);
 		return;
 	}
 
