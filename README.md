@@ -6,6 +6,8 @@ Welcome to the FoxLang Compiler! This is the official compiler for the FoxLang l
 
 This list is roughly in order of implementation
 
+ - [X] Lexer
+ - [X] Parser
  - [X] Functions
  - [ ] Structs (in progress)
  - [ ] Type checking (in progress)
@@ -16,12 +18,19 @@ This list is roughly in order of implementation
  - [ ] Macro & compile-time execution
  - [ ] Plugin system (possibly for extending language systems, like rust proc macros for custom parsing)
  - [ ] C/C++ support & external defs (I would like strong c++ support, unlike rust)
+ 
+Non-compiler features
+
+ - [ ] `fox-mode` for emacs (+ better emoji support)
+ - [ ] Possibly an lsp
 
 ## Building
 
 This builds using premake5, which is currently still in beta. As many dependencies are bundled in this repo, but that was not possible with llvm.
 
 ### Dependencies
+
+these are the tested versions. Lower versions may work, but it is untested and may not have active support.
 
  - `LLVM` >= 19
  - `Clang` >= 20

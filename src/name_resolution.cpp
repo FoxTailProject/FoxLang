@@ -138,12 +138,15 @@ void NameResolution::visit(VarDecl &it) {
 	if (it.value) it.value.value()->accept(*this);
 }
 
+// clang-format off
 std::ostream &operator<<(std::ostream &out, const TypeAST::Type value) {
 	using T = TypeAST::Type;
 	return out << [value] {
+// ================================================================
 #define PROCESS_VAL(p)                                                         \
-	case (p):                                                                  \
-		return #p;
+case (p):                                                                      \
+	return #p;
+// ================================================================
 		switch (value) {
 			PROCESS_VAL(T::i128);
 			PROCESS_VAL(T::u128);
@@ -168,6 +171,7 @@ std::ostream &operator<<(std::ostream &out, const TypeAST::Type value) {
 #undef PROCESS_VAL
 	}();
 }
+// clang-format on
 
 void NameResolution::visit(TypeAST &it) {
 	std::cout << "Type: " << it.type << std::endl;
