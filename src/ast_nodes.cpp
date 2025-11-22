@@ -132,6 +132,16 @@ std::string StructAST::printName() const {
 	return fmt::format("StructAST ({})", members.size());
 }
 
+std::vector<AST *> StructMemberAccessAST::getChildren() const {
+	std::vector<AST *> r;
+	r.push_back(parent.get());
+	return r;
+}
+
+std::string StructMemberAccessAST::printName() const {
+	return fmt::format("StructMemberAccessAST ({})", name);
+}
+
 std::string BlockAST::printName() const { return "BlockAST"; }
 
 std::vector<AST *> ParameterAST::getChildren() const {
@@ -224,6 +234,7 @@ void ReturnStmt::accept(ASTVisitor &v) { v.visit(*this); }
 void VarDecl::accept(ASTVisitor &v) { v.visit(*this); }
 void TypeAST::accept(ASTVisitor &v) { v.visit(*this); }
 void StructAST::accept(ASTVisitor &v) { v.visit(*this); }
+void StructMemberAccessAST::accept(ASTVisitor &v) {} // v.visit(*this); }
 void StructMemberAST::accept(ASTVisitor &v) { v.visit(*this); }
 void IfStmt::accept(ASTVisitor &v) { v.visit(*this); }
 void WhileStmt::accept(ASTVisitor &v) { v.visit(*this); }

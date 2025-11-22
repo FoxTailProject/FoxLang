@@ -29,44 +29,57 @@ std::optional<std::shared_ptr<ExprAST>> Parser::parseIdentifierExpr() {
 	std::string identifierString = current->lexeme;
 	current++;
 
-	if (current->type != TokenType::LEFT_PAREN) // Simple variable ref.
+	if (!(current->type == TokenType::LEFT_PAREN ||
+		  current->type == TokenType::DOT)) // Simple variable ref.
 		return std::make_shared<VariableExprAST>(identifierString);
-	current++;
 
-	// Call.
-	std::vector<std::shared_ptr<ExprAST>> Args;
-	// if (current->type != TokenType::RIGHT_PAREN) {
-	// while (true) {
-	// if (auto Arg = parseExpression().value())
-	// Args.push_back(std::move(Arg));
-	// else
-	// return std::nullopt;
-	//
-	// if (current->type == TokenType::RIGHT_PAREN) break;
-	//
-	// if (current->type != TokenType::COMMA) {
-	// LogError("Expected ')' or ',' in argument list");
-	// return std::nullopt;
-	// }
-	// current++;
-	// }
-	// }
+	bool call = false;
+	std::shared_ptr<CallExprAST> ast_call;
 
-	while (current->type != TokenType::RIGHT_PAREN) {
-		auto arg = parseExpression();
-		if (!arg) {
-			LogError("unable to parse expression", "E0100");
-			return std::nullopt;
+	while (current->type == TokenType::LEFT_PAREN) {
+		// Call.
+		// | identifier(\(args\))+ |
+		std::vector<std::shared_ptr<ExprAST>> Args;
+
+		while (current->type != TokenType::RIGHT_PAREN) {
+			auto arg = parseExpression();
+			if (!arg) {
+				LogError("unable to parse expression", "E0100");
+				return std::nullopt;
+			}
+			Args.push_back(std::move(arg.value()));
+
+			if (current->type == TokenType::COMMA) current++;
 		}
-		Args.push_back(std::move(arg.value()));
 
-		if (current->type == TokenType::COMMA) current++;
+		// Eat the ')'.
+		current++;
+
+		if (call)
+			ast_call =
+				std::make_shared<CallExprAST>(ast_call.get(), std::move(Args));
+		else
+			ast_call = std::make_shared<CallExprAST>(identifierString,
+													 std::move(Args));
+		call = true;
 	}
 
-	// Eat the ')'.
-	current++;
+	if (current->type != TokenType::DOT) return ast_call;
 
-	return std::make_shared<CallExprAST>(identifierString, std::move(Args));
+	std::shared_ptr<ExprAST> access = ast_call;
+	while (current->type == TokenType::DOT) {
+		current++;
+		if (current->type != TokenType::IDENTIFIER) {
+			LogError("expected identifier after member access .", "bing bong");
+			return std::nullopt;
+		}
+
+		access =
+			std::make_shared<StructMemberAccessAST>(current->lexeme, access);
+		current++;
+	}
+
+	return access;
 }
 
 std::optional<std::shared_ptr<ExprAST>> Parser::parsePrimary() {
@@ -200,11 +213,6 @@ std::optional<std::shared_ptr<BlockAST>> Parser::parseBlock() {
 
 	while (current->type != TokenType::RIGHT_BRACKET) {
 		auto stmt = parseStatement();
-		// if (!stmt) {
-		// LogError("Expected expression in block", "E0104");
-		// return std::nullopt;
-		// }
-
 		if (stmt) content.push_back(std::move(stmt.value()));
 	}
 
@@ -519,8 +527,6 @@ FileAST *Parser::parse() {
 			auto definition = parseDefinition();
 			if (!definition) continue;
 			fileNodes.push_back(std::move(definition.value()));
-			// fileNodes.push_back(
-			// static_cast<ExprAST *>(definition.value().release()));
 		} break;
 		case TokenType::STRUCT: {
 			auto def = parseStruct();

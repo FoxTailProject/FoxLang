@@ -85,6 +85,7 @@ public:
 };
 
 class TypeAST;
+// Struct Instantiation
 class StructLiteralAST : public Literal {
 public:
 	std::vector<std::string> names;
@@ -144,6 +145,8 @@ public:
 	CallExprAST(const std::string &Callee,
 				std::vector<std::shared_ptr<ExprAST>> Args)
 		: Callee(Callee), Args(std::move(Args)) {}
+	CallExprAST(AST *resolved_name, std::vector<std::shared_ptr<ExprAST>> Args)
+		: resolved_name(resolved_name), Args(std::move(Args)) {}
 
 	std::vector<AST *> getChildren() const override;
 
@@ -266,7 +269,7 @@ public:
 	void accept(ASTVisitor &ir) override;
 };
 
-// i know that its better to not have this as a seperate class and have the
+// i think that its better to not have this as a seperate class and have the
 // struct manage it, but this makes things like name res easier
 class StructMemberAST : public AST {
 public:
@@ -293,6 +296,21 @@ public:
 	StructAST(std::string name,
 			  std::vector<std::shared_ptr<StructMemberAST>> members)
 		: name(name), members(members) {}
+
+	std::vector<AST *> getChildren() const override;
+	std::string printName() const override;
+	void accept(ASTVisitor &ir) override;
+};
+
+class StructMemberAccessAST : public ExprAST {
+public:
+	std::string name;
+	std::shared_ptr<TypeAST> member_type;
+	std::shared_ptr<AST> parent;
+
+public:
+	StructMemberAccessAST(std::string name, std::shared_ptr<AST> parent)
+		: name(name), parent(parent) {}
 
 	std::vector<AST *> getChildren() const override;
 	std::string printName() const override;
