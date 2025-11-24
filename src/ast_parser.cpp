@@ -37,6 +37,7 @@ std::optional<std::shared_ptr<ExprAST>> Parser::parseIdentifierExpr() {
 	std::shared_ptr<CallExprAST> ast_call;
 
 	while (current->type == TokenType::LEFT_PAREN) {
+		current++;
 		// Call.
 		// | identifier(\(args\))+ |
 		std::vector<std::shared_ptr<ExprAST>> Args;
@@ -542,7 +543,8 @@ FileAST *Parser::parse() {
 }
 
 void Parser::LogError(std::string message, std::string code) {
-	std::cout << "Error " << code << ": " << message << std::endl;
+	std::cout << "Error " << code << ": " << message << " on line "
+			  << current->line << std::endl;
 	messages.push_back(
 		Message{.message = message,
 				.level = Severity::Error,
